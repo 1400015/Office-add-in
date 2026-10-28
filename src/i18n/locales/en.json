@@ -1,0 +1,124 @@
+{
+  "app": {
+    "name": "AI Assistant",
+    "chat": "Chat",
+    "settings": "Settings",
+    "history": "History",
+    "templates": "Templates"
+  },
+  "chat": {
+    "placeholder": "Write here...",
+    "send": "Send",
+    "stop": "Stop",
+    "thinking": "Thinking...",
+    "newChat": "New chat",
+    "emptyTitle": "How can I help you today?",
+    "emptySubtitle": "Ask anything, or use a quick action for your document.",
+    "insertIntoDocument": "Insert into document",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "regenerate": "Regenerate",
+    "contextAttached": "Using {{type}} as context",
+    "contextTypes": {
+      "none": "No context",
+      "selection": "selection",
+      "document": "document",
+      "range": "selected range",
+      "slide": "current slide"
+    }
+  },
+  "selectors": {
+    "provider": "Provider",
+    "model": "Model",
+    "reasoning": "Reasoning",
+    "refreshModels": "Refresh models"
+  },
+  "settings": {
+    "providers": "Providers",
+    "apiKey": "API Key",
+    "endpoint": "Endpoint",
+    "timeout": "Timeout (ms)",
+    "useProxy": "Route through proxy (recommended for OpenAI/Claude)",
+    "proxyUrl": "Proxy URL",
+    "testConnection": "Test connection",
+    "save": "Save",
+    "saved": "Settings saved",
+    "keySecurityWarning": "API keys are stored locally in plain text (OfficeRuntime.storage). Only use this add-in on trusted machines.",
+    "general": "General",
+    "temperature": "Temperature",
+    "maxTokens": "Max tokens",
+    "systemPrompt": "System prompt",
+    "systemPromptPlaceholder": "e.g. Answer as a specialist physician.",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "auto": "Automatic (follow Office)"
+    },
+    "language": "Language",
+    "ollamaWarning": "Ollama runs on localhost and only works in Office Desktop. In Office on the web, browser security blocks local connections.",
+    "corsWarning": "This provider's API does not allow direct browser calls (no CORS). Enable the proxy option or use a BFF endpoint."
+  },
+  "quickActions": {
+    "word": {
+      "summarize": "Summarize Document",
+      "explain": "Explain selection",
+      "rewrite": "Rewrite",
+      "translate": "Translate",
+      "fixGrammar": "Fix grammar",
+      "generate": "Generate content"
+    },
+    "excel": {
+      "explainFormula": "Explain formula",
+      "generateFormula": "Generate formula",
+      "analyseTable": "Analyse table",
+      "generateVba": "Generate VBA",
+      "generateScript": "Generate Office Script"
+    },
+    "powerpoint": {
+      "createPresentation": "Create presentation",
+      "improveSlide": "Improve slide",
+      "speakerNotes": "Speaker notes",
+      "summarizePresentation": "Summary of presentation"
+    }
+  },
+  "templates": {
+    "categories": {
+      "medicine": "Medicine",
+      "veterinary": "Veterinary Medicine",
+      "pharmacy": "Pharmacy",
+      "research": "Research",
+      "programming": "Programming",
+      "marketing": "Marketing",
+      "legal": "Legal",
+      "education": "Education"
+    },
+    "use": "Use template"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No conversations yet",
+    "delete": "Delete",
+    "clearAll": "Clear all",
+    "load": "Open"
+  },
+  "languages": {
+    "pt": "Portuguese",
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German"
+  },
+  "errors": {
+    "noApiKey": "Configure an API key in Settings first.",
+    "noModel": "Select a model first.",
+    "generic": "Something went wrong. Please try again.",
+    "officeNotReady": "Office is not ready yet."
+  },
+  "common": {
+    "loading": "Loading...",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close"
+  }
+}

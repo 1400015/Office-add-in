@@ -1,0 +1,124 @@
+{
+  "app": {
+    "name": "Assistente de IA",
+    "chat": "Chat",
+    "settings": "Definições",
+    "history": "Histórico",
+    "templates": "Modelos"
+  },
+  "chat": {
+    "placeholder": "Escreve aqui...",
+    "send": "Enviar",
+    "stop": "Parar",
+    "thinking": "A pensar...",
+    "newChat": "Nova conversa",
+    "emptyTitle": "Como posso ajudar hoje?",
+    "emptySubtitle": "Faz uma pergunta ou usa uma ação rápida no teu documento.",
+    "insertIntoDocument": "Inserir no documento",
+    "copy": "Copiar",
+    "copied": "Copiado!",
+    "regenerate": "Gerar novamente",
+    "contextAttached": "A usar {{type}} como contexto",
+    "contextTypes": {
+      "none": "Sem contexto",
+      "selection": "seleção",
+      "document": "documento",
+      "range": "intervalo selecionado",
+      "slide": "diapositivo atual"
+    }
+  },
+  "selectors": {
+    "provider": "Fornecedor",
+    "model": "Modelo",
+    "reasoning": "Raciocínio",
+    "refreshModels": "Atualizar modelos"
+  },
+  "settings": {
+    "providers": "Fornecedores",
+    "apiKey": "API Key",
+    "endpoint": "Endpoint",
+    "timeout": "Timeout (ms)",
+    "useProxy": "Usar proxy (recomendado para OpenAI/Claude)",
+    "proxyUrl": "URL do proxy",
+    "testConnection": "Testar ligação",
+    "save": "Guardar",
+    "saved": "Definições guardadas",
+    "keySecurityWarning": "As API keys são guardadas localmente em texto simples (OfficeRuntime.storage). Usa este suplemento apenas em máquinas de confiança.",
+    "general": "Geral",
+    "temperature": "Temperatura",
+    "maxTokens": "Tokens máximos",
+    "systemPrompt": "System prompt",
+    "systemPromptPlaceholder": "ex.: Responde como médico especialista.",
+    "theme": "Tema",
+    "themes": {
+      "light": "Claro",
+      "dark": "Escuro",
+      "auto": "Automático (seguir o Office)"
+    },
+    "language": "Idioma",
+    "ollamaWarning": "O Ollama corre em localhost e só funciona no Office Desktop. No Office web, a segurança do browser bloqueia ligações locais.",
+    "corsWarning": "A API deste fornecedor não permite chamadas diretas do browser (sem CORS). Ativa a opção de proxy ou usa um endpoint BFF."
+  },
+  "quickActions": {
+    "word": {
+      "summarize": "Resumir documento",
+      "explain": "Explicar seleção",
+      "rewrite": "Reescrever",
+      "translate": "Traduzir",
+      "fixGrammar": "Corrigir gramática",
+      "generate": "Gerar conteúdo"
+    },
+    "excel": {
+      "explainFormula": "Explicar fórmula",
+      "generateFormula": "Gerar fórmula",
+      "analyseTable": "Analisar tabela",
+      "generateVba": "Gerar VBA",
+      "generateScript": "Gerar Office Script"
+    },
+    "powerpoint": {
+      "createPresentation": "Criar apresentação",
+      "improveSlide": "Melhorar diapositivo",
+      "speakerNotes": "Notas de apresentador",
+      "summarizePresentation": "Resumo da apresentação"
+    }
+  },
+  "templates": {
+    "categories": {
+      "medicine": "Medicina",
+      "veterinary": "Medicina Veterinária",
+      "pharmacy": "Farmácia",
+      "research": "Investigação",
+      "programming": "Programação",
+      "marketing": "Marketing",
+      "legal": "Jurídico",
+      "education": "Educação"
+    },
+    "use": "Usar modelo"
+  },
+  "history": {
+    "title": "Histórico",
+    "empty": "Ainda não há conversas",
+    "delete": "Eliminar",
+    "clearAll": "Limpar tudo",
+    "load": "Abrir"
+  },
+  "languages": {
+    "pt": "Português",
+    "en": "Inglês",
+    "es": "Espanhol",
+    "fr": "Francês",
+    "de": "Alemão"
+  },
+  "errors": {
+    "noApiKey": "Configura primeiro uma API key nas Definições.",
+    "noModel": "Seleciona primeiro um modelo.",
+    "generic": "Ocorreu um erro. Tenta novamente.",
+    "officeNotReady": "O Office ainda não está pronto."
+  },
+  "common": {
+    "loading": "A carregar...",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "close": "Fechar"
+  }
+}

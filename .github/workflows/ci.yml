@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm run format:check
+
+      - run: npm test
+
+      - run: npm run build
+
+      # Remote gateway validation is skipped in CI: the gateway has a known
+      # issue parsing manifests with VersionOverrides. Local XML validation
+      # and office-addin-manifest info are used instead.
+      - run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('manifest.xml'); print('manifest.xml OK')"
+      - run: npx office-addin-manifest info manifest.xml
