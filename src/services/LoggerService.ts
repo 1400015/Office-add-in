@@ -27,18 +27,12 @@ export function sanitizeText(text: string): string {
   );
 }
 
-function sanitizeMeta(
-  meta: Record<string, unknown>
-): Record<string, unknown> {
+function sanitizeMeta(meta: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(meta)) {
     if (typeof value === "string") {
       result[key] = sanitizeText(value);
-    } else if (
-      value &&
-      typeof value === "object" &&
-      !Array.isArray(value)
-    ) {
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
       result[key] = sanitizeMeta(value as Record<string, unknown>);
     } else {
       result[key] = value;

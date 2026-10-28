@@ -209,9 +209,7 @@ export function SettingsView(): JSX.Element {
                           />
                         </Field>
                         {config.apiKey.length > 0 && (
-                          <Text size={200}>
-                            ••••{config.apiKey.slice(-4)}
-                          </Text>
+                          <Text size={200}>••••{config.apiKey.slice(-4)}</Text>
                         )}
                       </div>
                       <div className="settings-field">
