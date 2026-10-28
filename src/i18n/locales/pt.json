@@ -153,7 +153,15 @@
     "timeout": "O pedido excedeu o tempo limite. Tenta novamente ou aumenta o timeout nas Definições.",
     "rateLimited": "Limite de pedidos atingido. Aguarda um momento antes de tentar novamente.",
     "auth": "Falha na autenticação. Verifica a tua API key nas Definições.",
-    "insertFailed": "Não foi possível inserir a resposta."
+    "insertFailed": "Não foi possível inserir a resposta.",
+    "noText": "Não há texto para trabalhar.",
+    "noSelection": "Seleciona primeiro algum texto.",
+    "noFormula": "Seleciona uma célula que tenha uma fórmula.",
+    "noRange": "Seleciona um intervalo com dados.",
+    "noSlideText": "O diapositivo ativo não tem texto.",
+    "noSlides": "A apresentação não tem diapositivos.",
+    "topicRequired": "É preciso um tema.",
+    "badAiFormat": "O modelo não devolveu o formato esperado. Tenta outra vez."
   },
   "common": {
     "loading": "A carregar...",

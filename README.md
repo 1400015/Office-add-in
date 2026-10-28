@@ -11,7 +11,7 @@ Built with **React + TypeScript + Vite + Office.js + Fluent UI v9**.
 - **Abstract reasoning levels**: OFF / LOW / MEDIUM / HIGH / MAXIMUM, adapted internally per provider
 - **Streaming chat** (SSE) with a ChatGPT-like interface
 - **Host-aware quick actions**:
-  - **Word**: summarize document, explain selection, rewrite, translate, fix grammar, generate & insert content
+  - **Word**: summarize document, explain selection, rewrite, translate or fix grammar in place when text is selected, generate & insert content
   - **Excel**: explain formula, generate formula, analyse table, generate VBA, generate Office Script
   - **PowerPoint**: create slides, explain the active slide, improve or correct its text in place, translate the slide, generate speaker notes, summarize the deck, and insert the last answer onto the slide
 - **Prompt template library**: medicine, veterinary, pharmacy, research, programming, marketing, legal, education

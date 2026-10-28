@@ -153,7 +153,15 @@
     "timeout": "The request timed out. Try again or increase the timeout in Settings.",
     "rateLimited": "Rate limit reached. Wait a moment before trying again.",
     "auth": "Authentication failed. Check your API key in Settings.",
-    "insertFailed": "Could not insert the answer."
+    "insertFailed": "Could not insert the answer.",
+    "noText": "There is no text to work on.",
+    "noSelection": "Select some text first.",
+    "noFormula": "Select a cell that contains a formula.",
+    "noRange": "Select a range with data.",
+    "noSlideText": "The active slide has no text.",
+    "noSlides": "The presentation has no slides.",
+    "topicRequired": "A topic is required.",
+    "badAiFormat": "The model did not return the expected format. Try again."
   },
   "common": {
     "loading": "Loading...",

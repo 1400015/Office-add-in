@@ -13,6 +13,19 @@ function isOllamaEndpoint(message: string): boolean {
   return message.includes("11434") || /ollama/i.test(message);
 }
 
+const HOST_ERRORS: Record<string, string> = {
+  "No text available to summarize.": "errors.noText",
+  "Select some text first.": "errors.noSelection",
+  "Select a cell containing a formula.": "errors.noFormula",
+  "Select a range with data.": "errors.noRange",
+  "Select a range with text.": "errors.noRange",
+  "The active slide has no text.": "errors.noSlideText",
+  "The presentation has no slides.": "errors.noSlides",
+  "The presentation has no text.": "errors.noSlideText",
+  "A topic is required.": "errors.topicRequired",
+  "The AI did not return a formula.": "errors.badAiFormat",
+};
+
 export function friendlyError(
   error: unknown,
   context?: { provider?: string; onWeb?: boolean }
@@ -24,6 +37,16 @@ export function friendlyError(
 
   if (message === "noApiKey") return "noApiKey";
   if (message === "noModel") return "noModel";
+
+  const hostKey = HOST_ERRORS[message];
+  if (hostKey) return hostKey;
+  if (
+    /did not return a valid|missing a title|one text block per shape/i.test(
+      message
+    )
+  ) {
+    return "errors.badAiFormat";
+  }
 
   const provider = context?.provider;
   const isOllama = provider === "ollama" || isOllamaEndpoint(message);

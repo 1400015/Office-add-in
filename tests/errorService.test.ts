@@ -54,6 +54,18 @@ describe("friendlyError", () => {
     ).toBe("errors.network");
   });
 
+  it("maps host messages the user can act on", () => {
+    expect(friendlyError(new Error("Select some text first."))).toBe(
+      "errors.noSelection"
+    );
+    expect(
+      friendlyError(new Error("Select a cell containing a formula."))
+    ).toBe("errors.noFormula");
+    expect(
+      friendlyError(new Error("The AI did not return a valid JSON array."))
+    ).toBe("errors.badAiFormat");
+  });
+
   it("falls back to generic", () => {
     expect(friendlyError(new Error("some unexpected thing"))).toBe(
       "errors.generic"
