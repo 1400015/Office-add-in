@@ -103,6 +103,13 @@ body {
   padding: 0 12px 8px;
 }
 
+.dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+
 .selectors {
   display: grid;
   grid-template-columns: 1fr 1fr;

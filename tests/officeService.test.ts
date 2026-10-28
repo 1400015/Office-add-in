@@ -149,11 +149,43 @@ describe("isOllamaCompatible", () => {
 });
 
 describe("insertTextAtSelection", () => {
-  it("throws for non-Word hosts", async () => {
+  it("throws for hosts without insertion", async () => {
     installOffice("Excel", "PC");
     await expect(svc.insertTextAtSelection("text")).rejects.toThrow(
       /not supported in excel/i
     );
+  });
+
+  it("inserts text onto the active PowerPoint slide", async () => {
+    installOffice("PowerPoint", "PC");
+    const boxes: string[] = [];
+    vi.stubGlobal("PowerPoint", {
+      run: async (cb: (ctx: unknown) => Promise<unknown>) => {
+        const ctx = {
+          presentation: {
+            getSelectedSlides: () => ({
+              load: () => {},
+              items: [
+                {
+                  shapes: {
+                    addTextBox: (text: string) => {
+                      boxes.push(text);
+                      return { name: "", textFrame: { textRange: { text } } };
+                    },
+                  },
+                },
+              ],
+            }),
+          },
+          sync: async () => {},
+        };
+        return cb(ctx);
+      },
+    });
+    await expect(
+      svc.insertTextAtSelection("inserted")
+    ).resolves.toBeUndefined();
+    expect(boxes).toEqual(["inserted"]);
   });
 
   it("inserts text at selection in Word", async () => {

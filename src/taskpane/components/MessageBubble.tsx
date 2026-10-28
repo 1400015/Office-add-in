@@ -6,6 +6,7 @@ import {
   ArrowDownload20Regular,
 } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
+import { useAppStore } from "../../store/useAppStore";
 import type { ChatMessage } from "../../types";
 
 interface Props {
@@ -20,7 +21,12 @@ export function MessageBubble({
   onInsert,
 }: Props): JSX.Element {
   const { t } = useTranslation();
+  const host = useAppStore((s) => s.host);
   const [copied, setCopied] = useState(false);
+  const insertLabel =
+    host === "powerpoint"
+      ? t("chat.insertIntoSlide")
+      : t("chat.insertIntoDocument");
 
   const onCopy = async (): Promise<void> => {
     await navigator.clipboard.writeText(message.content);
@@ -45,10 +51,7 @@ export function MessageBubble({
             />
           </Tooltip>
           {isLastAssistant && (
-            <Tooltip
-              content={t("chat.insertIntoDocument")}
-              relationship="label"
-            >
+            <Tooltip content={insertLabel} relationship="label">
               <Button
                 size="small"
                 appearance="transparent"

@@ -1,3 +1,4 @@
+import { insertTextOnSlide } from "../powerpoint/powerpointActions";
 import type { ChatContext, OfficeHost, OfficePlatform } from "../types";
 import { MAX_CONTEXT_CHARS } from "../constants";
 import { logger } from "./LoggerService";
@@ -167,6 +168,10 @@ export async function insertTextAtSelection(text: string): Promise<void> {
       context.document.getSelection().insertText(text, Word.InsertLocation.end);
       await context.sync();
     });
+    return;
+  }
+  if (host === "powerpoint") {
+    await insertTextOnSlide(text);
     return;
   }
   throw new Error(`Insertion is not supported in ${host}`);

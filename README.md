@@ -13,6 +13,7 @@ Built with **React + TypeScript + Vite + Office.js + Fluent UI v9**.
 - **Host-aware quick actions**:
   - **Word**: summarize document, explain selection, rewrite, translate, fix grammar, generate & insert content
   - **Excel**: explain formula, generate formula, analyse table, generate VBA, generate Office Script
+  - **PowerPoint**: create slides, explain the active slide, improve or correct its text in place, translate the slide, generate speaker notes, summarize the deck, and insert the last answer onto the slide
 - **Prompt template library**: medicine, veterinary, pharmacy, research, programming, marketing, legal, education
 - **Local history** (IndexedDB) and settings persistence (`OfficeRuntime.storage`)
 - **Theme**: light / dark / automatic (follows the Office theme)

@@ -15,6 +15,7 @@
     "emptyTitle": "How can I help you today?",
     "emptySubtitle": "Ask anything, or use a quick action for your document.",
     "insertIntoDocument": "Insert into document",
+    "insertIntoSlide": "Insert into slide",
     "copy": "Copy",
     "copied": "Copied!",
     "regenerate": "Regenerate",
@@ -76,11 +77,24 @@
       "generateScript": "Generate Office Script"
     },
     "powerpoint": {
-      "createPresentation": "Create presentation",
+      "createPresentation": "Create slides",
       "improveSlide": "Improve slide",
+      "explain": "Explain slide",
+      "fixGrammar": "Fix grammar",
+      "translate": "Translate slide",
       "speakerNotes": "Speaker notes",
-      "summarizePresentation": "Summary of presentation"
+      "summarizePresentation": "Summarize deck"
     }
+  },
+  "dialogs": {
+    "createTitle": "Create slides",
+    "topic": "Topic",
+    "topicPlaceholder": "e.g. Cardiac wall anatomy",
+    "slideCount": "Number of slides",
+    "create": "Create",
+    "translateTitle": "Translate slide",
+    "targetLanguage": "Target language",
+    "translate": "Translate"
   },
   "templates": {
     "categories": {

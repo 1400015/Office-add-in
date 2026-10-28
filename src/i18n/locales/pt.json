@@ -15,6 +15,7 @@
     "emptyTitle": "Como posso ajudar hoje?",
     "emptySubtitle": "Faz uma pergunta ou usa uma ação rápida no teu documento.",
     "insertIntoDocument": "Inserir no documento",
+    "insertIntoSlide": "Inserir no diapositivo",
     "copy": "Copiar",
     "copied": "Copiado!",
     "regenerate": "Gerar novamente",
@@ -76,11 +77,24 @@
       "generateScript": "Gerar Office Script"
     },
     "powerpoint": {
-      "createPresentation": "Criar apresentação",
+      "createPresentation": "Criar diapositivos",
       "improveSlide": "Melhorar diapositivo",
+      "explain": "Explicar diapositivo",
+      "fixGrammar": "Corrigir gramática",
+      "translate": "Traduzir diapositivo",
       "speakerNotes": "Notas de apresentador",
-      "summarizePresentation": "Resumo da apresentação"
+      "summarizePresentation": "Resumir apresentação"
     }
+  },
+  "dialogs": {
+    "createTitle": "Criar diapositivos",
+    "topic": "Tema",
+    "topicPlaceholder": "ex.: anatomia da parede cardíaca",
+    "slideCount": "Número de diapositivos",
+    "create": "Criar",
+    "translateTitle": "Traduzir diapositivo",
+    "targetLanguage": "Idioma de destino",
+    "translate": "Traduzir"
   },
   "templates": {
     "categories": {
