@@ -39,6 +39,11 @@ OfficeUniversalAI/
 └── tests/                    # Vitest unit tests
 ```
 
+## Documentation
+
+- **[INSTALL.md](INSTALL.md)** — detailed installation guide (Windows, Mac, Web, production hosting, organization deployment)
+- **[README.md](README.md)** — this file (architecture, configuration, development)
+
 ## Getting started
 
 ### Prerequisites
