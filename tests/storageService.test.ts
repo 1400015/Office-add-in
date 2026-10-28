@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StorageService } from "../src/services/StorageService";
+import { STORAGE_KEYS } from "../src/constants";
 
 function createMockStorage() {
   const map = new Map<string, string>();
@@ -71,6 +72,36 @@ describe("StorageService", () => {
     mock.getItem.mockResolvedValueOnce("not-json{{");
     const value = await StorageService.getItem<string>("broken");
     expect(value).toBeNull();
+  });
+
+  it("encrypts providerConfigs at rest (API keys never in plain text)", async () => {
+    const configs = { mistral: { apiKey: "sk-topsecret-abc123" } };
+    await StorageService.setItem(STORAGE_KEYS.providerConfigs, configs);
+    const raw = map.get(STORAGE_KEYS.providerConfigs)!;
+    expect(raw.startsWith("enc:v1:")).toBe(true);
+    expect(raw).not.toContain("sk-topsecret-abc123");
+  });
+
+  it("roundtrips encrypted providerConfigs transparently", async () => {
+    const configs = { mistral: { apiKey: "sk-topsecret-abc123" } };
+    await StorageService.setItem(STORAGE_KEYS.providerConfigs, configs);
+    const value = await StorageService.getItem<typeof configs>(
+      STORAGE_KEYS.providerConfigs
+    );
+    expect(value).toEqual(configs);
+  });
+
+  it("still reads legacy plain-text providerConfigs (migration)", async () => {
+    map.set(STORAGE_KEYS.providerConfigs, JSON.stringify({ legacy: true }));
+    const value = await StorageService.getItem<Record<string, unknown>>(
+      STORAGE_KEYS.providerConfigs
+    );
+    expect(value).toEqual({ legacy: true });
+  });
+
+  it("does not encrypt non-sensitive keys", async () => {
+    await StorageService.setItem(STORAGE_KEYS.theme, "dark");
+    expect(map.get(STORAGE_KEYS.theme)).toBe('"dark"');
   });
 
   it("returns null when storage read fails", async () => {
