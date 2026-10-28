@@ -8,9 +8,7 @@ import { ConfigurationError, ProviderError } from "../src/types";
 import type { ChatMessage, ChatOptions } from "../src/types";
 
 function makeMessages(): ChatMessage[] {
-  return [
-    { id: "1", role: "user", content: "Hello", timestamp: Date.now() },
-  ];
+  return [{ id: "1", role: "user", content: "Hello", timestamp: Date.now() }];
 }
 
 function makeOptions(overrides: Partial<ChatOptions> = {}): ChatOptions {
@@ -73,10 +71,12 @@ describe("MistralProvider", () => {
   });
 
   it("throws ConfigurationError without API key", async () => {
-    const provider = new MistralProvider(createDefaultProviderConfig("mistral"));
-    await expect(provider.chat(makeMessages(), makeOptions())).rejects.toBeInstanceOf(
-      ConfigurationError
+    const provider = new MistralProvider(
+      createDefaultProviderConfig("mistral")
     );
+    await expect(
+      provider.chat(makeMessages(), makeOptions())
+    ).rejects.toBeInstanceOf(ConfigurationError);
   });
 
   it("injects reasoning suffix into system message", async () => {
@@ -101,7 +101,9 @@ describe("MistralProvider", () => {
     };
     expect(body.messages[0]!.role).toBe("system");
     expect(body.messages[0]!.content).toContain("Be brief.");
-    expect(body.messages[0]!.content.length).toBeGreaterThan("Be brief.".length);
+    expect(body.messages[0]!.content.length).toBeGreaterThan(
+      "Be brief.".length
+    );
   });
 
   it("retries on 429 and eventually succeeds", async () => {
@@ -117,7 +119,9 @@ describe("MistralProvider", () => {
         ok: true,
         status: 200,
         json: () =>
-          Promise.resolve({ choices: [{ message: { content: "after retry" } }] }),
+          Promise.resolve({
+            choices: [{ message: { content: "after retry" } }],
+          }),
         text: () => Promise.resolve(""),
       });
     vi.stubGlobal("fetch", fetchMock);
@@ -141,9 +145,9 @@ describe("MistralProvider", () => {
       apiKey: "k",
     };
     const provider = new MistralProvider(config);
-    await expect(provider.chat(makeMessages(), makeOptions())).rejects.toBeInstanceOf(
-      ProviderError
-    );
+    await expect(
+      provider.chat(makeMessages(), makeOptions())
+    ).rejects.toBeInstanceOf(ProviderError);
   });
 });
 

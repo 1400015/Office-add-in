@@ -24,7 +24,9 @@ describe("reasoning config", () => {
   it("every non-off level produces a non-empty suffix", () => {
     for (const level of REASONING_LEVELS) {
       if (level === "off") continue;
-      expect(getReasoningStrategy(level).systemPromptSuffix.length).toBeGreaterThan(10);
+      expect(
+        getReasoningStrategy(level).systemPromptSuffix.length
+      ).toBeGreaterThan(10);
     }
   });
 
