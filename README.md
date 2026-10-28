@@ -111,7 +111,20 @@ Open the **Settings** tab inside the add-in:
   - a provider endpoint that enables CORS.
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
 
-> ⚠️ **Security note**: API keys are stored locally in **plain text** via `OfficeRuntime.storage`. This is a platform limitation — there is no encrypted storage in Office.js. Only use this add-in on trusted machines.
+> ⚠️ **Security note**: API keys are stored locally via `OfficeRuntime.storage`. Secrets are masked in the UI (last 4 characters) and automatically redacted from all internal logs (`sk-*`, `Bearer`, `x-api-key`, `AIza*`, `gsk_*`, `key=...` patterns). However, Office.js provides no encrypted storage — only use this add-in on trusted machines.
+
+## Troubleshooting
+
+| Problem | Cause / Fix |
+|---|---|
+| Add-in won't load / blank taskpane | Office requires HTTPS. Run `npm start` to install dev certificates, and trust the certificate in your OS keychain on first run. |
+| `npm run validate` reports manifest errors | Known gateway limitation with `VersionOverrides`. Verify locally: `npx office-addin-manifest info manifest.xml`. |
+| OpenAI / Claude requests fail in the browser | CORS. Use the proxy option with a BFF endpoint (see Configuration) or a CORS-enabled endpoint. |
+| Ollama: "Cannot reach Ollama" | Make sure Ollama is running (`ollama serve`). If requests are blocked, set `OLLAMA_ORIGINS` to allow the taskpane origin. |
+| Ollama in Office on the web | Not supported — browsers block `http://localhost` from an HTTPS page. Use Office Desktop. |
+| Provider returns 429 | Rate limit. The add-in retries automatically (3 attempts, exponential backoff); wait a moment if it still fails. |
+| Request times out | Increase the timeout in **Settings** for that provider. |
+| Bundle/source maps | Production builds omit source maps by default; build with `SOURCEMAP=true npm run build` to emit them. |
 
 ## Architecture notes
 

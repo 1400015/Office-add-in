@@ -35,7 +35,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    sourcemap: true,
+    sourcemap: process.env.SOURCEMAP === "true",
     rollupOptions: {
       input: {
         index: resolve(__dirname, "index.html"),
