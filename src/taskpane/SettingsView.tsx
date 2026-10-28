@@ -202,11 +202,17 @@ export function SettingsView(): JSX.Element {
                           <Input
                             type="password"
                             value={config.apiKey}
+                            autoComplete="off"
                             onChange={(_, data) =>
                               updateProviderConfig(id, { apiKey: data.value })
                             }
                           />
                         </Field>
+                        {config.apiKey.length > 0 && (
+                          <Text size={200}>
+                            ••••{config.apiKey.slice(-4)}
+                          </Text>
+                        )}
                       </div>
                       <div className="settings-field">
                         <Field label={t("settings.endpoint")}>
