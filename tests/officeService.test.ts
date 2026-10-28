@@ -149,10 +149,10 @@ describe("isOllamaCompatible", () => {
 });
 
 describe("insertTextAtSelection", () => {
-  it("throws for hosts without insertion", async () => {
-    installOffice("Excel", "PC");
+  it("throws when the host cannot insert", async () => {
+    installOffice("Unknown", "PC");
     await expect(svc.insertTextAtSelection("text")).rejects.toThrow(
-      /not supported in excel/i
+      /not supported in unknown/i
     );
   });
 

@@ -115,7 +115,7 @@
                     <bt:Image size="80" resid="Icon80.Url"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="Taskpane.Url"/>
+                    <SourceLocation resid="Settings.Url"/>
                   </Action>
                 </Control>
               </Group>
@@ -196,7 +196,7 @@
                     <bt:Image size="80" resid="Icon80.Url"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="Taskpane.Url"/>
+                    <SourceLocation resid="Settings.Url"/>
                   </Action>
                 </Control>
               </Group>
@@ -277,7 +277,7 @@
                     <bt:Image size="80" resid="Icon80.Url"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="Taskpane.Url"/>
+                    <SourceLocation resid="Settings.Url"/>
                   </Action>
                 </Control>
               </Group>
@@ -303,6 +303,7 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/"/>
+        <bt:Url id="Settings.Url" DefaultValue="https://localhost:3000/?view=settings"/>
         <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html"/>
       </bt:Urls>
       <bt:ShortStrings>

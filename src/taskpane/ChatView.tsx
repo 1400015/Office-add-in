@@ -29,7 +29,8 @@ export function ChatView(): JSX.Element {
   const streamingContent = useAppStore((s) => s.streamingContent);
   const error = useAppStore((s) => s.error);
   const setError = useAppStore((s) => s.setError);
-  const { sendMessage, stopStreaming, insertLastAnswer } = useChat();
+  const { sendMessage, stopStreaming, insertLastAnswer, regenerateLast } =
+    useChat();
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -73,6 +74,11 @@ export function ChatView(): JSX.Element {
             message={message}
             isLastAssistant={index === lastAssistantIndex}
             onInsert={() => void insertLastAnswer()}
+            onRegenerate={
+              index === lastAssistantIndex
+                ? () => void regenerateLast()
+                : undefined
+            }
           />
         ))}
 

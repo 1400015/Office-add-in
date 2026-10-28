@@ -99,8 +99,29 @@ describe("useChat", () => {
     await waitFor(() => {
       const state = useAppStore.getState();
       expect(state.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+      expect(state.messages[0]!.content).toBe("hello");
       expect(state.messages[1]!.content).toBe("mocked reply");
       expect(state.error).toBeNull();
+      expect(state.isStreaming).toBe(false);
+    });
+    const sent = chatStreamMock.mock.calls[0]?.[0] as { content: string }[];
+    expect(sent.map((message) => message.content)).toContain("hello");
+  });
+
+  it("stops streaming and shows an error when the provider fails", async () => {
+    vi.mocked(createProvider).mockReturnValue({
+      chat: vi.fn(),
+      chatStream: vi.fn().mockRejectedValue(new Error("HTTP_401 unauthorized")),
+      getModels: vi.fn().mockResolvedValue([]),
+      id: "mistral",
+    } as unknown as ReturnType<typeof createProvider>);
+
+    const { result } = renderHook(() => useChat());
+    await result.current.sendMessage("hello");
+    await waitFor(() => {
+      const state = useAppStore.getState();
+      expect(state.isStreaming).toBe(false);
+      expect(state.error).toBe("errors.auth");
     });
   });
 });

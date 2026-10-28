@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Button, Tooltip } from "@fluentui/react-components";
 import {
-  Copy20Regular,
-  Checkmark20Regular,
+  ArrowClockwise20Regular,
   ArrowDownload20Regular,
+  Checkmark20Regular,
+  Copy20Regular,
 } from "@fluentui/react-icons";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store/useAppStore";
 import type { ChatMessage } from "../../types";
@@ -13,12 +16,14 @@ interface Props {
   message: ChatMessage;
   isLastAssistant: boolean;
   onInsert: () => void;
+  onRegenerate?: () => void;
 }
 
 export function MessageBubble({
   message,
   isLastAssistant,
   onInsert,
+  onRegenerate,
 }: Props): JSX.Element {
   const { t } = useTranslation();
   const host = useAppStore((s) => s.host);
@@ -26,7 +31,9 @@ export function MessageBubble({
   const insertLabel =
     host === "powerpoint"
       ? t("chat.insertIntoSlide")
-      : t("chat.insertIntoDocument");
+      : host === "excel"
+        ? t("chat.insertIntoCell")
+        : t("chat.insertIntoDocument");
 
   const onCopy = async (): Promise<void> => {
     await navigator.clipboard.writeText(message.content);
@@ -36,7 +43,15 @@ export function MessageBubble({
 
   return (
     <div className={`message message-${message.role}`}>
-      <div>{message.content}</div>
+      {message.role === "assistant" ? (
+        <div className="message-markdown">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {message.content}
+          </ReactMarkdown>
+        </div>
+      ) : (
+        <div>{message.content}</div>
+      )}
       {message.role === "assistant" && (
         <div className="message-actions">
           <Tooltip
@@ -50,6 +65,17 @@ export function MessageBubble({
               onClick={() => void onCopy()}
             />
           </Tooltip>
+          {isLastAssistant && onRegenerate && (
+            <Tooltip content={t("chat.regenerate")} relationship="label">
+              <Button
+                size="small"
+                appearance="transparent"
+                icon={<ArrowClockwise20Regular />}
+                aria-label={t("chat.regenerate")}
+                onClick={onRegenerate}
+              />
+            </Tooltip>
+          )}
           {isLastAssistant && (
             <Tooltip content={insertLabel} relationship="label">
               <Button

@@ -1,3 +1,4 @@
+import { insertTextInCell } from "../excel/excelActions";
 import { insertTextOnSlide } from "../powerpoint/powerpointActions";
 import type { ChatContext, OfficeHost, OfficePlatform } from "../types";
 import { MAX_CONTEXT_CHARS } from "../constants";
@@ -116,7 +117,15 @@ async function getWordContext(): Promise<
         contextType: "selection" as const,
       };
     }
-    return { contextType: "none" as const };
+    const body = context.document.body;
+    body.load("text");
+    await context.sync();
+    const full = body.text.trim();
+    if (!full) return { contextType: "none" as const };
+    return {
+      selectionText: truncate(full),
+      contextType: "document" as const,
+    };
   });
 }
 
@@ -168,6 +177,10 @@ export async function insertTextAtSelection(text: string): Promise<void> {
       context.document.getSelection().insertText(text, Word.InsertLocation.end);
       await context.sync();
     });
+    return;
+  }
+  if (host === "excel") {
+    await insertTextInCell(text);
     return;
   }
   if (host === "powerpoint") {

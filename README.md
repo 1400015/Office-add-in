@@ -117,7 +117,7 @@ Open the **Settings** tab inside the add-in:
   - a provider endpoint that enables CORS.
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
 
-> ⚠️ **Security note**: API keys are stored locally via `OfficeRuntime.storage`. Secrets are masked in the UI (last 4 characters) and automatically redacted from all internal logs (`sk-*`, `Bearer`, `x-api-key`, `AIza*`, `gsk_*`, `key=...` patterns). However, Office.js provides no encrypted storage — only use this add-in on trusted machines.
+> ⚠️ **Security note**: API keys are obfuscated in `OfficeRuntime.storage` (AES-GCM), but the key is derived from a constant stored beside the data. That stops casual inspection of logs; it does **not** protect a shared or compromised machine. Chat history in IndexedDB is plain text. Secrets are masked in the UI (last 4 characters) and redacted from internal logs.
 
 ## Troubleshooting
 

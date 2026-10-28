@@ -197,6 +197,14 @@ export async function createPresentation(
       const countResult = slides.getCount();
       await context.sync();
       const slide = slides.getItemAt(countResult.value - 1);
+      slide.shapes.load("items/type");
+      await context.sync();
+      for (const shape of slide.shapes.items) {
+        if (shape.type === "Placeholder") {
+          shape.delete();
+        }
+      }
+      await context.sync();
       const titleBox = slide.shapes.addTextBox(plan.title, {
         left: 40,
         top: 28,

@@ -24,14 +24,18 @@ export function HistoryView(): JSX.Element {
 
   if (history.length === 0) {
     return (
-      <div className="empty-state">
-        <Text>{t("history.empty")}</Text>
+      <div className="history-list">
+        <div className="warning-banner">{t("history.privacy")}</div>
+        <div className="empty-state">
+          <Text>{t("history.empty")}</Text>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="history-list">
+      <div className="warning-banner">{t("history.privacy")}</div>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Button
           size="small"

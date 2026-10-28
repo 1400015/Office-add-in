@@ -21,16 +21,25 @@ const TemplatesView = lazy(() =>
 );
 import { useAppStore } from "../store/useAppStore";
 import { useOfficeInit } from "../hooks/useOfficeInit";
+import { useRibbonCommands } from "../hooks/useRibbonCommands";
 
 type View = "chat" | "settings" | "history" | "templates";
 
+function initialView(): View {
+  if (typeof window === "undefined") return "chat";
+  return new URLSearchParams(window.location.search).get("view") === "settings"
+    ? "settings"
+    : "chat";
+}
+
 export function Taskpane(): JSX.Element {
   const { t, i18n } = useTranslation();
-  const [view, setView] = useState<View>("chat");
+  const [view, setView] = useState<View>(initialView);
   const startNewChat = useAppStore((s) => s.startNewChat);
   const language = useAppStore((s) => s.language);
 
   useOfficeInit();
+  useRibbonCommands();
 
   useEffect(() => {
     if (language && i18n.language !== language) {

@@ -19,7 +19,9 @@ import {
 interface FakeShape {
   id: string;
   name: string;
+  type: string;
   textFrame: { textRange: { text: string } };
+  delete: () => void;
 }
 
 interface FakeSlide {
@@ -33,8 +35,15 @@ interface FakeSlide {
   load: () => void;
 }
 
-function shape(id: string, text: string): FakeShape {
-  return { id, name: "", textFrame: { textRange: { text } } };
+function shape(id: string, text: string, type = "TextBox"): FakeShape {
+  const created: FakeShape = {
+    id,
+    name: "",
+    type,
+    textFrame: { textRange: { text } },
+    delete: () => {},
+  };
+  return created;
 }
 
 function slide(id: string, texts: string[]): FakeSlide {
@@ -86,6 +95,16 @@ function installPowerPoint(initial: FakeSlide[]): { slides: FakeSlide[] } {
     },
     add: () => {
       const created = slide(`slide-${slides.length + 1}`, []);
+      const placeholder = shape(
+        `${created.id}-ph`,
+        "Click to add title",
+        "Placeholder"
+      );
+      placeholder.delete = () => {
+        const index = created.shapes.items.indexOf(placeholder);
+        if (index >= 0) created.shapes.items.splice(index, 1);
+      };
+      created.shapes.items.unshift(placeholder);
       slides.push(created);
       return created;
     },
@@ -223,6 +242,9 @@ describe("PowerPoint actions", () => {
     expect(deck.slides[0]?.shapes.items[0]?.textFrame.textRange.text).toBe(
       "Epitélio"
     );
+    expect(
+      deck.slides[0]?.shapes.items.some((item) => item.type === "Placeholder")
+    ).toBe(false);
     expect(deck.slides[1]?.shapes.items[1]?.textFrame.textRange.text).toBe(
       "Matriz"
     );

@@ -27,13 +27,97 @@ export function useChat() {
     }
   }, [store.providerConfigs, store.activeProvider, store.activeModel]);
 
+  const runStream = useCallback(
+    async (history: ChatMessage[]): Promise<void> => {
+      const state = useAppStore.getState();
+      const config = state.providerConfigs[state.activeProvider];
+      const provider = createProvider(config);
+      const context = await getContext();
+      const options = {
+        model: state.activeModel,
+        temperature: state.temperature,
+        maxTokens: state.maxTokens,
+        reasoning: state.reasoning,
+        systemPrompt: state.systemPrompt || undefined,
+      };
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let full = "";
+      let failed = false;
+      try {
+        await provider.chatStream(
+          history,
+          options,
+          (token) => {
+            full += token;
+            useAppStore.getState().appendStreamToken(token);
+          },
+          context,
+          controller.signal
+        );
+      } catch (error) {
+        if (controller.signal.aborted) {
+          full = useAppStore.getState().streamingContent || full;
+        } else {
+          failed = true;
+          logger.error("chat", "sendMessage failed", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          useAppStore.getState().setStreaming(false);
+          useAppStore.getState().setError(
+            friendlyError(error, {
+              provider: useAppStore.getState().activeProvider,
+              onWeb: getPlatform() === "web",
+            })
+          );
+        }
+      } finally {
+        abortRef.current = null;
+      }
+      if (failed) return;
+
+      try {
+        const assistantMessage: ChatMessage = {
+          id: uid(),
+          role: "assistant",
+          content: full || "(empty response)",
+          timestamp: Date.now(),
+        };
+        const messages = [...useAppStore.getState().messages, assistantMessage];
+        useAppStore.getState().setMessages(messages);
+        useAppStore.getState().setStreaming(false);
+        await useAppStore.getState().persist();
+        useAppStore.getState().setHistory(await HistoryService.listChats());
+      } catch (error) {
+        logger.error("chat", "sendMessage failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        useAppStore.getState().setStreaming(false);
+        useAppStore.getState().setError(
+          friendlyError(error, {
+            provider: useAppStore.getState().activeProvider,
+            onWeb: getPlatform() === "web",
+          })
+        );
+      }
+    },
+    []
+  );
+
   const sendMessage = useCallback(
     async (content: string): Promise<void> => {
+      const state = useAppStore.getState();
       try {
-        ensureConfigured();
+        const config = state.providerConfigs[state.activeProvider];
+        if (!config.apiKey.trim() && config.id !== "ollama") {
+          throw new Error("noApiKey");
+        }
+        if (!state.activeModel) throw new Error("noModel");
       } catch (error) {
-        store.setError(
-          friendlyError(error, { provider: store.activeProvider })
+        state.setError(
+          friendlyError(error, {
+            provider: useAppStore.getState().activeProvider,
+          })
         );
         return;
       }
@@ -44,84 +128,26 @@ export function useChat() {
         content,
         timestamp: Date.now(),
       };
-      store.appendMessage(userMessage);
-      store.setStreaming(true, "");
-      store.setError(null);
-
-      const config = store.providerConfigs[store.activeProvider];
-      const provider = createProvider(config);
-      const context = await getContext();
-      const options = {
-        model: store.activeModel,
-        temperature: store.temperature,
-        maxTokens: store.maxTokens,
-        reasoning: store.reasoning,
-        systemPrompt: store.systemPrompt || undefined,
-      };
-
-      const historyForProvider = [...store.messages];
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      let full = "";
-      try {
-        await provider.chatStream(
-          historyForProvider,
-          options,
-          (token) => {
-            full += token;
-            store.appendStreamToken(token);
-          },
-          context,
-          controller.signal
-        );
-      } catch (error) {
-        if (controller.signal.aborted) {
-          full = store.streamingContent;
-        } else {
-          throw error;
-        }
-      } finally {
-        abortRef.current = null;
-      }
-
-      try {
-        const assistantMessage: ChatMessage = {
-          id: uid(),
-          role: "assistant",
-          content: full || "(empty response)",
-          timestamp: Date.now(),
-        };
-        const messages = [...useAppStore.getState().messages, assistantMessage];
-        store.setMessages(messages);
-        store.setStreaming(false);
-        await store.persist();
-        store.setHistory(await HistoryService.listChats());
-      } catch (error) {
-        logger.error("chat", "sendMessage failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        store.setStreaming(false);
-        store.setError(
-          friendlyError(error, {
-            provider: useAppStore.getState().activeProvider,
-            onWeb: getPlatform() === "web",
-          })
-        );
-      }
+      state.appendMessage(userMessage);
+      state.setStreaming(true, "");
+      state.setError(null);
+      await runStream(useAppStore.getState().messages);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      store.providerConfigs,
-      store.activeProvider,
-      store.activeModel,
-      store.temperature,
-      store.maxTokens,
-      store.reasoning,
-      store.systemPrompt,
-      store.messages,
-    ]
+    [runStream]
   );
+
+  const regenerateLast = useCallback(async (): Promise<void> => {
+    const state = useAppStore.getState();
+    const messages = [...state.messages];
+    if (messages[messages.length - 1]?.role === "assistant") {
+      messages.pop();
+    }
+    if (!messages.some((message) => message.role === "user")) return;
+    state.setMessages(messages);
+    state.setStreaming(true, "");
+    state.setError(null);
+    await runStream(messages);
+  }, [runStream]);
 
   const stopStreaming = useCallback((): void => {
     abortRef.current?.abort();
@@ -195,6 +221,7 @@ export function useChat() {
       logger.error("chat", "insert into document failed", {
         error: error instanceof Error ? error.message : String(error),
       });
+      useAppStore.getState().setError("errors.insertFailed");
       return false;
     }
   }, []);
@@ -217,6 +244,7 @@ export function useChat() {
   return {
     sendMessage,
     stopStreaming,
+    regenerateLast,
     runQuickAction,
     insertLastAnswer,
     refreshModels,

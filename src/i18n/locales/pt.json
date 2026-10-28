@@ -16,6 +16,7 @@
     "emptySubtitle": "Faz uma pergunta ou usa uma ação rápida no teu documento.",
     "insertIntoDocument": "Inserir no documento",
     "insertIntoSlide": "Inserir no diapositivo",
+    "insertIntoCell": "Inserir na célula",
     "copy": "Copiar",
     "copied": "Copiado!",
     "regenerate": "Gerar novamente",
@@ -44,7 +45,7 @@
     "testConnection": "Testar ligação",
     "save": "Guardar",
     "saved": "Definições guardadas",
-    "keySecurityWarning": "As API keys são guardadas localmente em texto simples (OfficeRuntime.storage). Usa este suplemento apenas em máquinas de confiança.",
+    "keySecurityWarning": "As chaves ficam neste computador. Estão ofuscadas no armazenamento do Office, mas a chave de ofuscação fica ao lado dos dados, por isso isto não protege num computador partilhado ou comprometido.",
     "general": "Geral",
     "temperature": "Temperatura",
     "maxTokens": "Tokens máximos",
@@ -94,7 +95,14 @@
     "create": "Criar",
     "translateTitle": "Traduzir diapositivo",
     "targetLanguage": "Idioma de destino",
-    "translate": "Traduzir"
+    "translate": "Traduzir",
+    "generate": "Gerar",
+    "instruction": "O que deve ser feito?",
+    "instructionPlaceholder": "Descreve a fórmula, a macro, o script ou o texto a gerar",
+    "generateTitle": "Gerar e inserir",
+    "formulaTitle": "Gerar fórmula",
+    "vbaTitle": "Gerar VBA",
+    "scriptTitle": "Gerar Office Script"
   },
   "templates": {
     "categories": {
@@ -114,7 +122,8 @@
     "empty": "Ainda não há conversas",
     "delete": "Eliminar",
     "clearAll": "Limpar tudo",
-    "load": "Abrir"
+    "load": "Abrir",
+    "privacy": "As conversas ficam neste browser (IndexedDB) em texto simples, incluindo o que colares a partir de um documento."
   },
   "languages": {
     "pt": "Português",
@@ -133,7 +142,8 @@
     "network": "Erro de rede. Verifica a tua ligação à internet e tenta novamente.",
     "timeout": "O pedido excedeu o tempo limite. Tenta novamente ou aumenta o timeout nas Definições.",
     "rateLimited": "Limite de pedidos atingido. Aguarda um momento antes de tentar novamente.",
-    "auth": "Falha na autenticação. Verifica a tua API key nas Definições."
+    "auth": "Falha na autenticação. Verifica a tua API key nas Definições.",
+    "insertFailed": "Não foi possível inserir a resposta."
   },
   "common": {
     "loading": "A carregar...",

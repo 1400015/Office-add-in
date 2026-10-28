@@ -12,6 +12,7 @@ import {
   Input,
   Option,
   Spinner,
+  Textarea,
 } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store/useAppStore";
@@ -34,14 +35,21 @@ interface ActionDef {
 
 const TARGET_LANGUAGES = ["pt", "en", "es", "fr", "de"] as const;
 
+type DialogKind = "create" | "translate" | "instruction" | null;
+type InstructionKind =
+  "word-generate" | "excel-formula" | "excel-vba" | "excel-script";
+
 export function QuickActions(): JSX.Element {
   const { t, i18n } = useTranslation();
   const host = useAppStore((s) => s.host);
   const pendingAction = useAppStore((s) => s.pendingAction);
   const { runQuickAction } = useChat();
-  const [dialog, setDialog] = useState<"create" | "translate" | null>(null);
+  const [dialog, setDialog] = useState<DialogKind>(null);
   const [topic, setTopic] = useState("");
   const [slideCount, setSlideCount] = useState("6");
+  const [instruction, setInstruction] = useState("");
+  const [instructionKind, setInstructionKind] =
+    useState<InstructionKind>("word-generate");
   const [targetLang, setTargetLang] = useState(
     i18n.language.toLowerCase().startsWith("pt") ? "en" : "pt"
   );
@@ -135,14 +143,68 @@ export function QuickActions(): JSX.Element {
   };
 
   const submitTranslate = (): void => {
-    const label = t("quickActions.powerpoint.translate");
     const language = contentLanguageName(targetLang);
+    const label =
+      host === "word"
+        ? t("quickActions.word.translate")
+        : t("quickActions.powerpoint.translate");
     closeDialog();
+    if (host === "word") {
+      void runQuickAction(
+        (p) => wordActions.translateSelection(language, p),
+        label
+      );
+      return;
+    }
     void runQuickAction(
       (p) => powerpointActions.translateSlide(language, p),
       label
     );
   };
+
+  const openInstruction = (kind: InstructionKind): void => {
+    setInstructionKind(kind);
+    setInstruction("");
+    setDialog("instruction");
+  };
+
+  const submitInstruction = (): void => {
+    const text = instruction.trim();
+    if (!text) return;
+    closeDialog();
+    if (instructionKind === "word-generate") {
+      void runQuickAction(
+        (p) => wordActions.generateAndInsert(text, p),
+        t("quickActions.word.generate")
+      );
+      return;
+    }
+    if (instructionKind === "excel-formula") {
+      void runQuickAction(
+        (p) => excelActions.generateFormula(text, p),
+        t("quickActions.excel.generateFormula")
+      );
+      return;
+    }
+    if (instructionKind === "excel-vba") {
+      void runQuickAction(
+        (p) => excelActions.generateVba(text, p),
+        t("quickActions.excel.generateVba")
+      );
+      return;
+    }
+    void runQuickAction(
+      (p) => excelActions.generateOfficeScript(text, p),
+      t("quickActions.excel.generateScript")
+    );
+  };
+
+  const instructionTitle = {
+    "word-generate": t("dialogs.generateTitle"),
+    "excel-formula": t("dialogs.formulaTitle"),
+    "excel-vba": t("dialogs.vbaTitle"),
+    "excel-script": t("dialogs.scriptTitle"),
+  }[instructionKind];
 
   if (host !== "powerpoint" && actions.length === 0) return <></>;
 
@@ -174,6 +236,54 @@ export function QuickActions(): JSX.Element {
             </Button>
           );
         })}
+        {host === "word" && (
+          <>
+            <Button
+              size="small"
+              appearance="outline"
+              disabled={pendingAction !== null}
+              onClick={() => setDialog("translate")}
+            >
+              {t("quickActions.word.translate")}
+            </Button>
+            <Button
+              size="small"
+              appearance="outline"
+              disabled={pendingAction !== null}
+              onClick={() => openInstruction("word-generate")}
+            >
+              {t("quickActions.word.generate")}
+            </Button>
+          </>
+        )}
+        {host === "excel" && (
+          <>
+            <Button
+              size="small"
+              appearance="outline"
+              disabled={pendingAction !== null}
+              onClick={() => openInstruction("excel-formula")}
+            >
+              {t("quickActions.excel.generateFormula")}
+            </Button>
+            <Button
+              size="small"
+              appearance="outline"
+              disabled={pendingAction !== null}
+              onClick={() => openInstruction("excel-vba")}
+            >
+              {t("quickActions.excel.generateVba")}
+            </Button>
+            <Button
+              size="small"
+              appearance="outline"
+              disabled={pendingAction !== null}
+              onClick={() => openInstruction("excel-script")}
+            >
+              {t("quickActions.excel.generateScript")}
+            </Button>
+          </>
+        )}
         {host === "powerpoint" && (
           <Button
             size="small"
@@ -267,6 +377,41 @@ export function QuickActions(): JSX.Element {
                 onClick={submitTranslate}
               >
                 {t("dialogs.translate")}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
+
+      <Dialog
+        open={dialog === "instruction"}
+        onOpenChange={(_, data) => {
+          if (!data.open) closeDialog();
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{instructionTitle}</DialogTitle>
+            <DialogContent>
+              <Field label={t("dialogs.instruction")} required>
+                <Textarea
+                  value={instruction}
+                  placeholder={t("dialogs.instructionPlaceholder")}
+                  onChange={(_, data) => setInstruction(data.value)}
+                  rows={4}
+                />
+              </Field>
+            </DialogContent>
+            <DialogActions>
+              <Button appearance="secondary" onClick={closeDialog}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                appearance="primary"
+                disabled={!instruction.trim() || pendingAction !== null}
+                onClick={submitInstruction}
+              >
+                {t("dialogs.generate")}
               </Button>
             </DialogActions>
           </DialogBody>

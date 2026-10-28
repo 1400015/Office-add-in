@@ -76,6 +76,35 @@ body {
   color: var(--colorNeutralForeground1, #242424);
 }
 
+.message-markdown {
+  white-space: normal;
+}
+
+.message-markdown p {
+  margin: 0 0 0.45em;
+}
+
+.message-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.message-markdown ul,
+.message-markdown ol {
+  margin: 0 0 0.45em 1.2em;
+}
+
+.message-markdown pre {
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.message-markdown code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+}
+
 .message-actions {
   display: flex;
   gap: 4px;

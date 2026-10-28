@@ -9,12 +9,16 @@ import {
   Text,
 } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";
-import { PROMPT_TEMPLATES, TEMPLATE_CATEGORIES } from "./PromptTemplates";
+import {
+  PROMPT_TEMPLATES,
+  TEMPLATE_CATEGORIES,
+  templateText,
+} from "./PromptTemplates";
 import { useAppStore } from "../store/useAppStore";
 import { useChat } from "../hooks/useChat";
 
 export function TemplatesView(): JSX.Element {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
   const persist = useAppStore((s) => s.persist);
   const { sendMessage } = useChat();
@@ -51,26 +55,33 @@ export function TemplatesView(): JSX.Element {
                 {t(`templates.categories.${category}`)}
               </AccordionHeader>
               <AccordionPanel>
-                {templates.map((tpl) => (
-                  <Card key={tpl.id} size="small" style={{ marginBottom: 8 }}>
-                    <Text weight="semibold">{tpl.title}</Text>
-                    <div
-                      style={{ fontSize: 11, opacity: 0.75, margin: "4px 0" }}
-                    >
-                      {tpl.prompt.slice(0, 120)}
-                      {tpl.prompt.length > 120 ? "..." : ""}
-                    </div>
-                    <Button
-                      size="small"
-                      appearance="primary"
-                      onClick={() =>
-                        void onUse(tpl.id, tpl.prompt, tpl.systemPrompt)
-                      }
-                    >
-                      {used === tpl.id ? t("chat.copied") : t("templates.use")}
-                    </Button>
-                  </Card>
-                ))}
+                {templates.map((tpl) => {
+                  const title = templateText(tpl.title, i18n.language);
+                  const prompt = templateText(tpl.prompt, i18n.language);
+                  const system = tpl.systemPrompt
+                    ? templateText(tpl.systemPrompt, i18n.language)
+                    : undefined;
+                  return (
+                    <Card key={tpl.id} size="small" style={{ marginBottom: 8 }}>
+                      <Text weight="semibold">{title}</Text>
+                      <div
+                        style={{ fontSize: 11, opacity: 0.75, margin: "4px 0" }}
+                      >
+                        {prompt.slice(0, 120)}
+                        {prompt.length > 120 ? "..." : ""}
+                      </div>
+                      <Button
+                        size="small"
+                        appearance="primary"
+                        onClick={() => void onUse(tpl.id, prompt, system)}
+                      >
+                        {used === tpl.id
+                          ? t("chat.copied")
+                          : t("templates.use")}
+                      </Button>
+                    </Card>
+                  );
+                })}
               </AccordionPanel>
             </AccordionItem>
           );
