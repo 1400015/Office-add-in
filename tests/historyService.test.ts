@@ -50,7 +50,7 @@ function makeChat(id: string, timestamp: number): ChatHistory {
 
 beforeEach(async () => {
   const { openDB } = await import("idb");
-  const db = await openDB();
+  const db = await openDB("test-db", 1);
   await db.clear("chats");
   vi.clearAllMocks();
 });

@@ -18,11 +18,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
 import { PROVIDER_DEFINITIONS, PROVIDER_ORDER } from "../config/providers";
-import {
-  MAX_TOKENS_LIMIT,
-  DEFAULT_MAX_TOKENS,
-  DEFAULT_TEMPERATURE,
-} from "../config/reasoningProfiles";
+import { MAX_TOKENS_LIMIT } from "../config/reasoningProfiles";
 import { isOllamaCompatible } from "../services/OfficeService";
 import { ModelService } from "../services/ModelService";
 import type { ProviderId, ThemeMode } from "../types";
@@ -384,5 +380,3 @@ export function SettingsView(): JSX.Element {
     </div>
   );
 }
-
-export { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE };

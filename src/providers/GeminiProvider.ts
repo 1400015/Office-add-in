@@ -152,10 +152,6 @@ export class GeminiProvider extends BaseProvider {
     return text;
   }
 
-  protected extractTokenFromEvent(_data: unknown): string | null {
-    return null;
-  }
-
   override async getModels() {
     try {
       const data = await httpRequest<{

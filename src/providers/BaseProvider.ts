@@ -80,8 +80,6 @@ export abstract class BaseProvider {
 
   protected abstract extractChatResponse(data: unknown): string;
 
-  protected abstract extractTokenFromEvent(data: unknown): string | null;
-
   protected requestHeaders(): Record<string, string> {
     const headers = { ...this.buildHeaders() };
     if (this.config.useProxy && this.config.proxyUrl.trim()) {

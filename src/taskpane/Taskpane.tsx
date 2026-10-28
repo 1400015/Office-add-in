@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Tab, TabList, Button, Spinner } from "@fluentui/react-components";
 import {
   Chat20Regular,
@@ -20,22 +20,17 @@ const TemplatesView = lazy(() =>
   import("./TemplatesView").then((m) => ({ default: m.TemplatesView }))
 );
 import { useAppStore } from "../store/useAppStore";
+import { useChat } from "../hooks/useChat";
 import { useOfficeInit } from "../hooks/useOfficeInit";
 import { useRibbonCommands } from "../hooks/useRibbonCommands";
-
-type View = "chat" | "settings" | "history" | "templates";
-
-function initialView(): View {
-  if (typeof window === "undefined") return "chat";
-  return new URLSearchParams(window.location.search).get("view") === "settings"
-    ? "settings"
-    : "chat";
-}
+import type { AppView } from "../types";
 
 export function Taskpane(): JSX.Element {
   const { t, i18n } = useTranslation();
-  const [view, setView] = useState<View>(initialView);
+  const view = useAppStore((s) => s.view);
+  const setView = useAppStore((s) => s.setView);
   const startNewChat = useAppStore((s) => s.startNewChat);
+  const { stopStreaming } = useChat();
   const language = useAppStore((s) => s.language);
 
   useOfficeInit();
@@ -48,6 +43,8 @@ export function Taskpane(): JSX.Element {
   }, [language, i18n]);
 
   const onNewChat = (): void => {
+    // Abort first: a streaming answer must not land in the new conversation.
+    stopStreaming();
     startNewChat();
     setView("chat");
   };
@@ -65,7 +62,7 @@ export function Taskpane(): JSX.Element {
         <TabList
           size="small"
           selectedValue={view}
-          onTabSelect={(_, data) => setView(data.value as View)}
+          onTabSelect={(_, data) => setView(data.value as AppView)}
         >
           <Tab value="chat" icon={<Chat20Regular />}>
             {t("app.chat")}

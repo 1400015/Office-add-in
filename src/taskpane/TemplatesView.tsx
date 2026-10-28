@@ -21,6 +21,7 @@ export function TemplatesView(): JSX.Element {
   const { t, i18n } = useTranslation();
   const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
   const persist = useAppStore((s) => s.persist);
+  const setView = useAppStore((s) => s.setView);
   const { sendMessage } = useChat();
   const [used, setUsed] = useState<string | null>(null);
 
@@ -34,6 +35,7 @@ export function TemplatesView(): JSX.Element {
       await persist();
     }
     setUsed(templateId);
+    setView("chat");
     await sendMessage(prompt);
   };
 
@@ -76,7 +78,7 @@ export function TemplatesView(): JSX.Element {
                         onClick={() => void onUse(tpl.id, prompt, system)}
                       >
                         {used === tpl.id
-                          ? t("chat.copied")
+                          ? t("templates.sent")
                           : t("templates.use")}
                       </Button>
                     </Card>

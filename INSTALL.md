@@ -193,11 +193,11 @@ Edita o `manifest.xml` e substitui **todos** os `https://localhost:3000` pelo te
 
 ```xml
 <!-- Antes -->
-<IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+<IconUrl DefaultValue="https://localhost:3000/icons/icon-32.png"/>
 <SourceLocation DefaultValue="https://localhost:3000/"/>
 
 <!-- Depois (exemplo) -->
-<IconUrl DefaultValue="https://meu-servidor.com/ai-addin/assets/icon-32.png"/>
+<IconUrl DefaultValue="https://meu-servidor.com/ai-addin/icons/icon-32.png"/>
 <SourceLocation DefaultValue="https://meu-servidor.com/ai-addin/"/>
 ```
 
@@ -243,7 +243,7 @@ server {
     }
 
     # Importante: CORS para o taskpane
-    location /assets/ {
+    location /icons/ {
         add_header Access-Control-Allow-Origin *;
     }
 }
@@ -375,6 +375,14 @@ npx wrangler deploy
 
 O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
 
+Antes de publicar, limita as origens que podem chamar o proxy:
+
+```bash
+npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
+```
+
+Só essa origem pode chamar o Worker a partir do browser. Sem esta variável, apenas `https://localhost:3000` é aceite.
+
 Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `https://ouai-proxy.workers.dev`) em **URL do proxy**.
 
 #### Opção antiga — não uses a chave no URL
@@ -476,7 +484,7 @@ Verifica:
 1. O caminho do ficheiro está correto
 2. O ficheiro `manifest.xml` é XML válido: `python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('manifest.xml')"`
 3. Todos os URLs no manifest usam **HTTPS** (não HTTP)
-4. Os ícones existem em `assets/` (corre `npm run icons`)
+4. Os ícones existem em `public/icons/` (corre `npm run icons`)
 
 ---
 

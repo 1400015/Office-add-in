@@ -16,6 +16,9 @@ export function useOfficeInit(): void {
 
     async function init(): Promise<void> {
       const ready = await waitForOfficeReady();
+      // Load the settings before publishing the host. Ribbon commands use the
+      // host as their trigger, so they must not run against empty configs.
+      await hydrate();
       if (cancelled) return;
       if (ready) {
         setOfficeInfo(getHost(), getPlatform());
@@ -23,7 +26,6 @@ export function useOfficeInit(): void {
         logger.warn("office", "Running outside Office host (dev mode)");
         setOfficeInfo("unknown", "unknown");
       }
-      await hydrate();
     }
 
     void init();

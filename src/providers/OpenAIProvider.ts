@@ -60,11 +60,4 @@ export class OpenAIProvider extends BaseProvider {
     }
     return content;
   }
-
-  protected extractTokenFromEvent(data: unknown): string | null {
-    const parsed = data as {
-      choices?: Array<{ delta?: { content?: string } }>;
-    };
-    return parsed.choices?.[0]?.delta?.content ?? null;
-  }
 }

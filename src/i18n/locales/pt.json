@@ -124,13 +124,17 @@
       "legal": "Jurídico",
       "education": "Educação"
     },
-    "use": "Usar modelo"
+    "use": "Usar modelo",
+    "sent": "Enviado"
   },
   "history": {
     "title": "Histórico",
     "empty": "Ainda não há conversas",
     "delete": "Eliminar",
     "clearAll": "Limpar tudo",
+    "clearConfirmTitle": "Eliminar todas as conversas?",
+    "clearConfirmBody": "As conversas guardadas e o histórico cifrado não podem ser recuperados.",
+    "clearConfirm": "Eliminar tudo",
     "load": "Abrir",
     "locked": "Bloqueado",
     "privacy": "As conversas ficam neste browser. Estão em texto simples até definires uma frase-passe nas Definições."
@@ -153,6 +157,7 @@
     "timeout": "O pedido excedeu o tempo limite. Tenta novamente ou aumenta o timeout nas Definições.",
     "rateLimited": "Limite de pedidos atingido. Aguarda um momento antes de tentar novamente.",
     "auth": "Falha na autenticação. Verifica a tua API key nas Definições.",
+    "uiCrash": "O add-in encontrou um erro inesperado. Recarrega para continuar.",
     "insertFailed": "Não foi possível inserir a resposta.",
     "noText": "Não há texto para trabalhar.",
     "noSelection": "Seleciona primeiro algum texto.",
@@ -167,6 +172,7 @@
     "loading": "A carregar...",
     "cancel": "Cancelar",
     "confirm": "Confirmar",
-    "close": "Fechar"
+    "close": "Fechar",
+    "reload": "Recarregar"
   }
 }

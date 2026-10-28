@@ -1,0 +1,178 @@
+{
+  "app": {
+    "name": "KI-Assistent",
+    "chat": "Chat",
+    "settings": "Einstellungen",
+    "history": "Verlauf",
+    "templates": "Vorlagen"
+  },
+  "chat": {
+    "placeholder": "Hier schreiben ...",
+    "send": "Senden",
+    "stop": "Stoppen",
+    "thinking": "Denkt nach ...",
+    "newChat": "Neue Unterhaltung",
+    "emptyTitle": "Wie kann ich heute helfen?",
+    "emptySubtitle": "Stellen Sie eine Frage oder nutzen Sie eine Schnellaktion für Ihr Dokument.",
+    "insertIntoDocument": "In Dokument einfügen",
+    "insertIntoSlide": "In Folie einfügen",
+    "insertIntoCell": "In Zelle einfügen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "regenerate": "Neu generieren",
+    "contextAttached": "{{type}} wird als Kontext verwendet",
+    "contextTypes": {
+      "none": "Kein Kontext",
+      "selection": "Auswahl",
+      "document": "Dokument",
+      "range": "ausgewählter Bereich",
+      "slide": "aktuelle Folie"
+    }
+  },
+  "selectors": {
+    "provider": "Anbieter",
+    "model": "Modell",
+    "reasoning": "Denkmodus",
+    "refreshModels": "Modelle aktualisieren"
+  },
+  "settings": {
+    "providers": "Anbieter",
+    "apiKey": "API-Schlüssel",
+    "endpoint": "Endpunkt",
+    "timeout": "Zeitlimit (ms)",
+    "useProxy": "Über Proxy leiten (empfohlen für OpenAI/Claude)",
+    "proxyUrl": "Proxy-URL",
+    "testConnection": "Verbindung testen",
+    "save": "Speichern",
+    "saved": "Einstellungen gespeichert",
+    "keySecurityWarning": "Ohne Passphrase werden Schlüssel auf diesem Computer nur verschleiert. Legen Sie eine Passphrase fest, um Schlüssel und Verlauf zu verschlüsseln. Die Passphrase wird nicht gespeichert; nach dem Neuladen müssen Sie sie erneut eingeben.",
+    "createPassphrase": "Passphrase (mindestens 8 Zeichen)",
+    "setPassphrase": "Passphrase festlegen",
+    "unlockPassphrase": "Passphrase",
+    "unlock": "Entsperren",
+    "lock": "Sperren",
+    "unlockToEdit": "Entsperren Sie die Passphrase, um API-Schlüssel anzuzeigen oder zu ändern.",
+    "passphraseShort": "Verwenden Sie mindestens 8 Zeichen.",
+    "passphraseWrong": "Falsche Passphrase.",
+    "passphraseFailed": "Die Passphrase konnte nicht gespeichert werden.",
+    "general": "Allgemein",
+    "temperature": "Temperatur",
+    "maxTokens": "Max. Tokens",
+    "systemPrompt": "System-Prompt",
+    "systemPromptPlaceholder": "z. B. Antworten Sie als Facharzt.",
+    "theme": "Design",
+    "themes": {
+      "light": "Hell",
+      "dark": "Dunkel",
+      "auto": "Automatisch (Office folgen)"
+    },
+    "language": "Sprache",
+    "ollamaWarning": "Ollama läuft auf localhost und funktioniert nur in Office Desktop. In Office im Web blockiert die Browsersicherheit lokale Verbindungen.",
+    "corsWarning": "Die API dieses Anbieters erlaubt keine direkten Browseraufrufe (kein CORS). Aktivieren Sie die Proxy-Option oder verwenden Sie einen BFF-Endpunkt."
+  },
+  "quickActions": {
+    "word": {
+      "summarize": "Dokument zusammenfassen",
+      "explain": "Auswahl erklären",
+      "rewrite": "Umschreiben",
+      "translate": "Übersetzen",
+      "fixGrammar": "Grammatik korrigieren",
+      "generate": "Inhalt generieren"
+    },
+    "excel": {
+      "explainFormula": "Formel erklären",
+      "generateFormula": "Formel generieren",
+      "analyseTable": "Tabelle analysieren",
+      "generateVba": "VBA generieren",
+      "generateScript": "Office Script generieren"
+    },
+    "powerpoint": {
+      "createPresentation": "Folien erstellen",
+      "improveSlide": "Folie verbessern",
+      "explain": "Folie erklären",
+      "fixGrammar": "Grammatik korrigieren",
+      "translate": "Folie übersetzen",
+      "speakerNotes": "Sprechernotizen",
+      "summarizePresentation": "Präsentation zusammenfassen"
+    }
+  },
+  "dialogs": {
+    "createTitle": "Folien erstellen",
+    "topic": "Thema",
+    "topicPlaceholder": "z. B. Anatomie der Herzwand",
+    "slideCount": "Anzahl der Folien",
+    "create": "Erstellen",
+    "translateTitle": "Folie übersetzen",
+    "targetLanguage": "Zielsprache",
+    "translate": "Übersetzen",
+    "generate": "Generieren",
+    "instruction": "Was soll erledigt werden?",
+    "instructionPlaceholder": "Beschreiben Sie die Formel, das Makro, das Skript oder den Text",
+    "generateTitle": "Generieren und einfügen",
+    "formulaTitle": "Formel generieren",
+    "vbaTitle": "VBA generieren",
+    "scriptTitle": "Office Script generieren"
+  },
+  "templates": {
+    "categories": {
+      "medicine": "Medizin",
+      "veterinary": "Veterinärmedizin",
+      "pharmacy": "Pharmazie",
+      "research": "Forschung",
+      "programming": "Programmierung",
+      "marketing": "Marketing",
+      "legal": "Recht",
+      "education": "Bildung"
+    },
+    "use": "Vorlage verwenden",
+    "sent": "Gesendet"
+  },
+  "history": {
+    "title": "Verlauf",
+    "empty": "Noch keine Unterhaltungen",
+    "delete": "Löschen",
+    "clearAll": "Alles löschen",
+    "clearConfirmTitle": "Alle Unterhaltungen löschen?",
+    "clearConfirmBody": "Die gespeicherten Unterhaltungen und der verschlüsselte Verlauf können nicht wiederhergestellt werden.",
+    "clearConfirm": "Alles löschen",
+    "load": "Öffnen",
+    "locked": "Gesperrt",
+    "privacy": "Unterhaltungen bleiben in diesem Browser. Sie sind im Klartext, bis Sie in den Einstellungen eine Passphrase festlegen."
+  },
+  "languages": {
+    "pt": "Portugiesisch",
+    "en": "Englisch",
+    "es": "Spanisch",
+    "fr": "Französisch",
+    "de": "Deutsch"
+  },
+  "errors": {
+    "noApiKey": "Konfigurieren Sie zuerst einen API-Schlüssel in den Einstellungen.",
+    "noModel": "Wählen Sie zuerst ein Modell.",
+    "uiCrash": "Das Add-in ist auf einen unerwarteten Fehler gestoßen. Laden Sie neu, um fortzufahren.",
+    "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "officeNotReady": "Office ist noch nicht bereit.",
+    "ollamaOffline": "Ollama ist nicht erreichbar. Stellen Sie sicher, dass es läuft: Führen Sie 'ollama serve' in einem Terminal aus. Wenn der Fehler bleibt, legen Sie OLLAMA_ORIGINS fest, um die Herkunft dieses Add-ins zuzulassen.",
+    "ollamaWebBlocked": "Ollama funktioniert nur in Office Desktop. In Office im Web blockiert die Browsersicherheit Verbindungen zu localhost.",
+    "network": "Netzwerkfehler. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+    "timeout": "Die Anfrage hat das Zeitlimit überschritten. Versuchen Sie es erneut oder erhöhen Sie das Zeitlimit in den Einstellungen.",
+    "rateLimited": "Ratenlimit erreicht. Warten Sie einen Moment, bevor Sie es erneut versuchen.",
+    "auth": "Authentifizierung fehlgeschlagen. Prüfen Sie Ihren API-Schlüssel in den Einstellungen.",
+    "insertFailed": "Die Antwort konnte nicht eingefügt werden.",
+    "noText": "Es ist kein Text zum Bearbeiten vorhanden.",
+    "noSelection": "Wählen Sie zuerst Text aus.",
+    "noFormula": "Wählen Sie eine Zelle mit einer Formel aus.",
+    "noRange": "Wählen Sie einen Bereich mit Daten aus.",
+    "noSlideText": "Die aktive Folie enthält keinen Text.",
+    "noSlides": "Die Präsentation enthält keine Folien.",
+    "topicRequired": "Ein Thema ist erforderlich.",
+    "badAiFormat": "Das Modell hat nicht das erwartete Format zurückgegeben. Versuchen Sie es erneut."
+  },
+  "common": {
+    "loading": "Wird geladen ...",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "reload": "Neu laden"
+  }
+}

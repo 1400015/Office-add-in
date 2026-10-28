@@ -1,5 +1,5 @@
-import { handleProxy } from "../src/proxy/forward";
+import { handleProxy, type ProxyEnv } from "../src/proxy/forward";
 
 export default {
-  fetch: handleProxy,
+  fetch: (request: Request, env: ProxyEnv) => handleProxy(request, env),
 };

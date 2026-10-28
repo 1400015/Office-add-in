@@ -124,13 +124,17 @@
       "legal": "Legal",
       "education": "Education"
     },
-    "use": "Use template"
+    "use": "Use template",
+    "sent": "Sent"
   },
   "history": {
     "title": "History",
     "empty": "No conversations yet",
     "delete": "Delete",
     "clearAll": "Clear all",
+    "clearConfirmTitle": "Delete all conversations?",
+    "clearConfirmBody": "The saved conversations and their encrypted history cannot be recovered.",
+    "clearConfirm": "Delete all",
     "load": "Open",
     "locked": "Locked",
     "privacy": "Conversations stay in this browser. They are plain text until you set a passphrase in Settings."
@@ -153,6 +157,7 @@
     "timeout": "The request timed out. Try again or increase the timeout in Settings.",
     "rateLimited": "Rate limit reached. Wait a moment before trying again.",
     "auth": "Authentication failed. Check your API key in Settings.",
+    "uiCrash": "The add-in hit an unexpected error. Reload to continue.",
     "insertFailed": "Could not insert the answer.",
     "noText": "There is no text to work on.",
     "noSelection": "Select some text first.",
@@ -167,6 +172,7 @@
     "loading": "Loading...",
     "cancel": "Cancel",
     "confirm": "Confirm",
-    "close": "Close"
+    "close": "Close",
+    "reload": "Reload"
   }
 }

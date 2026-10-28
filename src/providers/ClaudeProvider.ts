@@ -5,6 +5,7 @@ import type {
   ProviderConfig,
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
+import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
 
@@ -93,10 +94,6 @@ export class ClaudeProvider extends BaseProvider {
     return text;
   }
 
-  protected extractTokenFromEvent(_data: unknown): string | null {
-    return null;
-  }
-
   override async chatStream(
     messages: ChatMessage[],
     options: ChatOptions,
@@ -145,21 +142,26 @@ export class ClaudeProvider extends BaseProvider {
           if (!trimmed.startsWith("data:")) continue;
           const payload = trimmed.slice(5).trim();
           if (payload === "[DONE]") continue;
+          let parsed: {
+            type?: string;
+            delta?: { type?: string; text?: string };
+            error?: { message?: string };
+          };
           try {
-            const parsed = JSON.parse(payload) as {
-              type?: string;
-              delta?: { type?: string; text?: string };
-              error?: { message?: string };
-            };
-            if (parsed.error?.message) {
-              throw new Error(parsed.error.message);
-            }
-            if (parsed.type === "content_block_delta") {
-              const chunk = parsed.delta?.text;
-              if (chunk) onToken(chunk);
-            }
+            parsed = JSON.parse(payload) as typeof parsed;
           } catch {
-            // ignore malformed lines
+            continue; // Malformed SSE frame, skip it.
+          }
+          if (parsed.error?.message) {
+            throw new ProviderError(
+              this.id,
+              "STREAM_ERROR",
+              parsed.error.message
+            );
+          }
+          if (parsed.type === "content_block_delta") {
+            const chunk = parsed.delta?.text;
+            if (chunk) onToken(chunk);
           }
         }
       }

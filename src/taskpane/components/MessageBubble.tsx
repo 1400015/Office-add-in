@@ -36,9 +36,13 @@ export function MessageBubble({
         : t("chat.insertIntoDocument");
 
   const onCopy = async (): Promise<void> => {
-    await navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard?.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard permission can be denied inside the Office WebView.
+    }
   };
 
   return (

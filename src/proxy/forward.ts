@@ -13,6 +13,13 @@ const HOP_BY_HOP = new Set([
   "x-ouai-upstream",
 ]);
 
+export interface ProxyEnv {
+  /** Comma-separated list of origins allowed to call the proxy. */
+  ALLOWED_ORIGINS?: string;
+}
+
+const DEFAULT_ALLOWED_ORIGINS = ["https://localhost:3000"];
+
 export function isAllowedUpstream(endpoint: string): boolean {
   let url: URL;
   try {
@@ -42,23 +49,56 @@ export function resolveUpstream(
   return `${endpoint.replace(/\/$/, "")}${pathAndQuery}`;
 }
 
-export function corsHeaders(): Record<string, string> {
+export function allowedOrigins(env?: ProxyEnv): string[] {
+  const raw = env?.ALLOWED_ORIGINS?.trim();
+  if (!raw) return DEFAULT_ALLOWED_ORIGINS;
+  return raw
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+export function isOriginAllowed(
+  origin: string | null,
+  env?: ProxyEnv
+): boolean {
+  // Requests without an Origin (curl, server-to-server) cannot be protected
+  // by CORS, so the allowlist only applies to browsers.
+  if (!origin) return true;
+  return allowedOrigins(env).includes(origin);
+}
+
+export function corsHeaders(
+  origin: string | null = null
+): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": origin ?? "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "*",
     "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
   };
 }
 
-export async function handleProxy(request: Request): Promise<Response> {
+export async function handleProxy(
+  request: Request,
+  env?: ProxyEnv
+): Promise<Response> {
+  const origin = request.headers.get("Origin");
+  if (!isOriginAllowed(origin, env)) {
+    return new Response("Origin not allowed", {
+      status: 403,
+      headers: corsHeaders(null),
+    });
+  }
+
   if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
   if (request.method !== "GET" && request.method !== "POST") {
     return new Response("Method not allowed", {
       status: 405,
-      headers: corsHeaders(),
+      headers: corsHeaders(origin),
     });
   }
 
@@ -70,7 +110,7 @@ export async function handleProxy(request: Request): Promise<Response> {
   if (!target) {
     return new Response("Upstream not allowed", {
       status: 400,
-      headers: corsHeaders(),
+      headers: corsHeaders(origin),
     });
   }
 
@@ -85,6 +125,8 @@ export async function handleProxy(request: Request): Promise<Response> {
     body: request.method === "GET" ? undefined : request.body,
   });
   const out = new Headers(response.headers);
-  for (const [key, value] of Object.entries(corsHeaders())) out.set(key, value);
+  for (const [key, value] of Object.entries(corsHeaders(origin))) {
+    out.set(key, value);
+  }
   return new Response(response.body, { status: response.status, headers: out });
 }

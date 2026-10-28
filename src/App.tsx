@@ -5,6 +5,7 @@ import {
 } from "@fluentui/react-components";
 import { useEffect, useState } from "react";
 import { Taskpane } from "./taskpane/Taskpane";
+import { ErrorBoundary } from "./taskpane/ErrorBoundary";
 import { useAppStore } from "./store/useAppStore";
 
 function isOfficeDarkTheme(): boolean {
@@ -37,7 +38,9 @@ export default function App(): JSX.Element {
       theme={dark ? webDarkTheme : webLightTheme}
       style={{ height: "100%" }}
     >
-      <Taskpane />
+      <ErrorBoundary>
+        <Taskpane />
+      </ErrorBoundary>
     </FluentProvider>
   );
 }

@@ -1,4 +1,4 @@
-import type { ProviderId, ReasoningLevel } from "../types";
+import type { ReasoningLevel } from "../types";
 
 export const REASONING_LEVELS: ReasoningLevel[] = [
   "off",
@@ -18,8 +18,6 @@ export const REASONING_LABELS: Record<ReasoningLevel, string> = {
 
 interface ReasoningStrategy {
   systemPromptSuffix: string;
-  effort?: "minimal" | "low" | "medium" | "high";
-  maxCompletionTokens?: number;
 }
 
 const PROMPT_SUFFIX: Record<ReasoningLevel, string> = {
@@ -33,17 +31,7 @@ const PROMPT_SUFFIX: Record<ReasoningLevel, string> = {
 };
 
 function buildStrategy(level: ReasoningLevel): ReasoningStrategy {
-  return {
-    systemPromptSuffix: PROMPT_SUFFIX[level],
-    effort:
-      level === "off"
-        ? undefined
-        : level === "low"
-          ? "low"
-          : level === "medium"
-            ? "medium"
-            : "high",
-  };
+  return { systemPromptSuffix: PROMPT_SUFFIX[level] };
 }
 
 const STRATEGY_CACHE = new Map<ReasoningLevel, ReasoningStrategy>();
@@ -55,24 +43,6 @@ export function getReasoningStrategy(level: ReasoningLevel): ReasoningStrategy {
     STRATEGY_CACHE.set(level, strategy);
   }
   return strategy;
-}
-
-interface ProviderReasoningSupport {
-  nativeEffort: boolean;
-  prefixMessages: boolean;
-}
-
-const PROVIDER_SUPPORT: Record<ProviderId, ProviderReasoningSupport> = {
-  mistral: { nativeEffort: false, prefixMessages: true },
-  openai: { nativeEffort: true, prefixMessages: true },
-  claude: { nativeEffort: false, prefixMessages: true },
-  gemini: { nativeEffort: false, prefixMessages: true },
-  openrouter: { nativeEffort: false, prefixMessages: true },
-  ollama: { nativeEffort: false, prefixMessages: true },
-};
-
-export function providerSupportsReasoning(provider: ProviderId): boolean {
-  return PROVIDER_SUPPORT[provider].prefixMessages;
 }
 
 export const DEFAULT_TEMPERATURE = 0.2;

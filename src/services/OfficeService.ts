@@ -138,12 +138,26 @@ async function getExcelContext(): Promise<
     await context.sync();
     const values = range.values as (string | number | boolean)[][];
     if (values.length === 0) return { contextType: "none" as const };
-    const csv = values
-      .map((row) => row.map((cell) => String(cell ?? "")).join(","))
+    // Serialising a whole column can freeze the taskpane, so cap the snapshot
+    // before building the CSV (same budget the Excel actions use).
+    const maxRows = 200;
+    const maxColumns = 50;
+    const rows = values.slice(0, maxRows);
+    const truncated =
+      values.length > maxRows || (values[0]?.length ?? 0) > maxColumns;
+    const csv = rows
+      .map((row) =>
+        row
+          .slice(0, maxColumns)
+          .map((cell) => String(cell ?? ""))
+          .join(",")
+      )
       .join("\n");
     if (csv.trim().length === 0) return { contextType: "none" as const };
     return {
-      selectionText: truncate(`Range ${range.address}\n\n${csv}`),
+      selectionText: truncate(
+        `Range ${range.address}${truncated ? " (truncated)" : ""}\n\n${csv}`
+      ),
       contextType: "range" as const,
     };
   });

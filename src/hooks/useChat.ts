@@ -2,7 +2,6 @@ import { useCallback, useRef } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { createProvider } from "../providers/ProviderFactory";
 import { getContext, insertTextAtSelection } from "../services/OfficeService";
-import { ModelService } from "../services/ModelService";
 import { HistoryService } from "../services/HistoryService";
 import type { ChatMessage } from "../types";
 import { logger } from "../services/LoggerService";
@@ -14,18 +13,19 @@ function uid(): string {
 }
 
 export function useChat() {
-  const store = useAppStore();
   const abortRef = useRef<AbortController | null>(null);
 
   const ensureConfigured = useCallback((): void => {
-    const config = store.providerConfigs[store.activeProvider];
+    const { providerConfigs, activeProvider, activeModel } =
+      useAppStore.getState();
+    const config = providerConfigs[activeProvider];
     if (!config.apiKey.trim() && config.id !== "ollama") {
       throw new Error("noApiKey");
     }
-    if (!store.activeModel) {
+    if (!activeModel) {
       throw new Error("noModel");
     }
-  }, [store.providerConfigs, store.activeProvider, store.activeModel]);
+  }, []);
 
   const runStream = useCallback(
     async (history: ChatMessage[]): Promise<void> => {
@@ -75,6 +75,19 @@ export function useChat() {
         abortRef.current = null;
       }
       if (failed) return;
+
+      // If the conversation changed while streaming (for example "New chat"),
+      // the answer no longer belongs to it: drop it instead of polluting the
+      // new conversation.
+      const lastSentId = history[history.length - 1]?.id;
+      const current = useAppStore.getState();
+      if (
+        lastSentId &&
+        current.messages[current.messages.length - 1]?.id !== lastSentId
+      ) {
+        current.setStreaming(false);
+        return;
+      }
 
       try {
         const assistantMessage: ChatMessage = {
@@ -226,28 +239,11 @@ export function useChat() {
     }
   }, []);
 
-  const refreshModels = useCallback(async (): Promise<void> => {
-    const state = useAppStore.getState();
-    const config = state.providerConfigs[state.activeProvider];
-    const models = await ModelService.listModels(config, true);
-    const current = useAppStore.getState().activeModel;
-    const stillValid = models.some((m) => m.id === current);
-    if (!stillValid && models.length > 0) {
-      useAppStore.getState().setActiveModel(models[0]!.id);
-      await ModelService.setStoredActiveModel(
-        state.activeProvider,
-        models[0]!.id
-      );
-    }
-  }, []);
-
   return {
     sendMessage,
     stopStreaming,
     regenerateLast,
     runQuickAction,
     insertLastAnswer,
-    refreshModels,
-    isStreaming: store.isStreaming,
   };
 }

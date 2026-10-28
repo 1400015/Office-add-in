@@ -17,23 +17,39 @@ function storage(): OfficeRuntime.Storage {
 
 export const StorageService = {
   async getItem<T>(key: string): Promise<T | null> {
+    let value: unknown;
     try {
-      const value = await storage().getItem(key);
-      if (value === undefined || value === null) return null;
-      let text = value as string;
-      if (ENCRYPTED_KEYS.has(key) && CryptoService.isEncrypted(text)) {
-        try {
-          text = await CryptoService.decrypt(text);
-        } catch (error) {
-          if (error instanceof Error && error.message === "locked") {
-            throw new StorageLockedError();
-          }
-          throw error;
-        }
-      }
-      return JSON.parse(text) as T;
+      value = await storage().getItem(key);
     } catch (error) {
       logger.warn("storage", `Failed to read key ${key}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+
+    if (value === undefined || value === null) return null;
+
+    let text = value as string;
+    if (ENCRYPTED_KEYS.has(key) && CryptoService.isEncrypted(text)) {
+      try {
+        text = await CryptoService.decrypt(text);
+      } catch (error) {
+        if (error instanceof Error && error.message === "locked") {
+          // Never mask a locked vault: callers must know they cannot read
+          // the stored secrets, otherwise they could overwrite them.
+          throw new StorageLockedError();
+        }
+        logger.warn("storage", `Failed to decrypt key ${key}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      }
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch (error) {
+      logger.warn("storage", `Failed to parse key ${key}`, {
         error: error instanceof Error ? error.message : String(error),
       });
       return null;
@@ -41,6 +57,14 @@ export const StorageService = {
   },
 
   async setItem(key: string, value: unknown): Promise<void> {
+    if (
+      ENCRYPTED_KEYS.has(key) &&
+      !CryptoService.isUnlocked() &&
+      (await CryptoService.hasPassphrase())
+    ) {
+      // Writing now would replace the sealed payload with a different key.
+      throw new StorageLockedError();
+    }
     let text = JSON.stringify(value);
     if (ENCRYPTED_KEYS.has(key) && (await CryptoService.isAvailable())) {
       text = await CryptoService.encrypt(text);

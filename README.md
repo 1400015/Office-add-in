@@ -17,26 +17,26 @@ Built with **React + TypeScript + Vite + Office.js + Fluent UI v9**.
 - **Prompt template library**: medicine, veterinary, pharmacy, research, programming, marketing, legal, education
 - **Local history** (IndexedDB) and settings persistence (`OfficeRuntime.storage`)
 - **Theme**: light / dark / automatic (follows the Office theme)
-- **i18n**: English and Portuguese (extensible)
+- **i18n**: English, Portuguese, Spanish, French and German (extensible)
 
 ## Project structure
 
 ```text
 OfficeUniversalAI/
 ├── manifest.xml              # Universal manifest (Word, Excel, PowerPoint)
-├── index.html                # Taskpane entry
-├── commands.html             # Ribbon command handlers
+├── index.html                # Taskpane entry (also the shared runtime)
 ├── src/
 │   ├── taskpane/             # React UI (Chat, Settings, History, Templates)
+│   ├── commands/             # Ribbon bridge running in the shared runtime
 │   ├── providers/            # BaseProvider + 6 providers + factory
 │   ├── services/             # Storage, History (IndexedDB), Model, Office, Http, Logger
 │   ├── store/                # Zustand store
 │   ├── hooks/                # useOfficeInit, useChat
 │   ├── word/ excel/ powerpoint/  # Host-specific actions
 │   ├── config/               # Provider definitions, reasoning profiles
-│   ├── i18n/                 # Translations (en, pt)
+│   ├── i18n/                 # Translations (en, pt, es, fr, de)
 │   └── types/                # Shared TypeScript types
-├── assets/                   # Icons (16–128 px)
+├── public/icons/             # Add-in icons (16–128 px)
 └── tests/                    # Vitest unit tests
 ```
 
@@ -67,19 +67,16 @@ npm start         # installs dev certificates and starts https://localhost:3000
 
 ```bash
 npm run build       # typecheck + production build into dist/
-npm run validate    # validate manifest.xml against Microsoft's gateway
+npm run validate    # validate manifest.xml against Microsoft's schema
 npm run lint        # ESLint (strict, zero warnings allowed)
 npm run format      # Prettier
 npm test            # Vitest unit tests
 npm run stop        # remove dev certificates
 ```
 
-> **Note on `npm run validate`**: the remote validation gateway may report false
-> errors for manifests containing `VersionOverrides` (a known gateway limitation).
-> The manifest uses the standard Microsoft format (`ov:` prefix with
-> `taskpaneappversionoverrides/1.0` namespace) and is fully valid for sideloading.
-> Local XML well-formedness is always verified; `office-addin-manifest info`
-> can be used to confirm the manifest parses correctly.
+> **Note on `npm run validate`**: the manifest is validated against Microsoft's
+> schema, including the `VersionOverrides` block. CI runs this on every push, so
+> packaging regressions are caught before a release.
 
 ## Sideloading
 
@@ -112,7 +109,7 @@ Deploy `manifest.xml` through the Microsoft 365 admin center (**Settings > Integ
 Open the **Settings** tab inside the add-in:
 
 - Add an **API key** and optional **endpoint** per provider.
-- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require the **proxy** in [`proxy/worker.ts`](proxy/worker.ts). Deploy it with `npx wrangler deploy` and paste the worker origin into **Proxy URL**. The add-in sends `X-OUAI-Upstream`; the worker only forwards to allowlisted provider hosts and adds CORS. The API key stays in the `Authorization` header, never in the URL.
+- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require the **proxy** in [`proxy/worker.ts`](proxy/worker.ts). Deploy it with `npx wrangler deploy` and paste the worker origin into **Proxy URL**. The add-in sends `X-OUAI-Upstream`; the worker only forwards to allowlisted provider hosts and adds CORS. The API key stays in the `Authorization` header, never in the URL. Set `ALLOWED_ORIGINS` in `wrangler.toml` to the origin that hosts the add-in; browser calls from any other origin are rejected.
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
 
 > ⚠️ **Security note**: Without a passphrase, API keys are only obfuscated in `OfficeRuntime.storage`. Set a passphrase in Settings to encrypt keys and chat history with a key that stays in memory for the session (it is not stored). Secrets are masked in the UI and redacted from logs.
@@ -122,7 +119,7 @@ Open the **Settings** tab inside the add-in:
 | Problem | Cause / Fix |
 |---|---|
 | Add-in won't load / blank taskpane | Office requires HTTPS. Run `npm start` to install dev certificates, and trust the certificate in your OS keychain on first run. |
-| `npm run validate` reports manifest errors | Known gateway limitation with `VersionOverrides`. Verify locally: `npx office-addin-manifest info manifest.xml`. |
+| `npm run validate` reports manifest errors | The validator checks the full schema, including `VersionOverrides`. Fix `manifest.xml`; `npx office-addin-manifest info manifest.xml` shows the parsed manifest. |
 | OpenAI / Claude requests fail in the browser | CORS. Use the proxy option with a BFF endpoint (see Configuration) or a CORS-enabled endpoint. |
 | Ollama: "Cannot reach Ollama" | Make sure Ollama is running (`ollama serve`). If requests are blocked, set `OLLAMA_ORIGINS` to allow the taskpane origin. |
 | Ollama in Office on the web | Not supported — browsers block `http://localhost` from an HTTPS page. Use Office Desktop. |
@@ -132,6 +129,7 @@ Open the **Settings** tab inside the add-in:
 
 ## Architecture notes
 
+- **Ribbon**: the manifest declares a shared runtime (`Runtimes`), so the ribbon buttons and the taskpane run in the same JavaScript context. `src/commands/ribbon.ts` forwards the command through a custom event and opens the panel.
 - **Providers** implement a common contract (`BaseProvider`): `chat`, `chatStream`, `getModels`, `summarize`, `translate`, `analyse`. New providers only need a new class + one line in `ProviderFactory`.
 - **Reasoning** is abstract: the selected level is translated into a system-prompt strategy per provider (`config/reasoningProfiles.ts`).
 - **Retry**: HTTP requests retry automatically on 429/5xx with exponential backoff (3 attempts).

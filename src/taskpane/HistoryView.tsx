@@ -1,4 +1,14 @@
-import { Button, Text } from "@fluentui/react-components";
+import { useState } from "react";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  Text,
+} from "@fluentui/react-components";
 import { Delete20Regular, DocumentText20Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
@@ -14,6 +24,7 @@ export function HistoryView(): JSX.Element {
   const setHistory = useAppStore((s) => s.setHistory);
   const loadChat = useAppStore((s) => s.loadChat);
   const currentChatId = useAppStore((s) => s.currentChatId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const onDelete = async (id: string): Promise<void> => {
     await HistoryService.deleteChat(id);
@@ -23,6 +34,7 @@ export function HistoryView(): JSX.Element {
   const onClearAll = async (): Promise<void> => {
     await HistoryService.clear();
     setHistory([]);
+    setConfirmOpen(false);
   };
 
   if (history.length === 0) {
@@ -43,7 +55,7 @@ export function HistoryView(): JSX.Element {
         <Button
           size="small"
           appearance="subtle"
-          onClick={() => void onClearAll()}
+          onClick={() => setConfirmOpen(true)}
         >
           {t("history.clearAll")}
         </Button>
@@ -86,6 +98,31 @@ export function HistoryView(): JSX.Element {
           />
         </div>
       ))}
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(_, data) => {
+          if (!data.open) setConfirmOpen(false);
+        }}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>{t("history.clearConfirmTitle")}</DialogTitle>
+            <DialogContent>{t("history.clearConfirmBody")}</DialogContent>
+            <DialogActions>
+              <Button
+                appearance="secondary"
+                onClick={() => setConfirmOpen(false)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button appearance="primary" onClick={() => void onClearAll()}>
+                {t("history.clearConfirm")}
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

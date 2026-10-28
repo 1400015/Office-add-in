@@ -1,3 +1,8 @@
 name = "ouai-proxy"
 main = "proxy/worker.ts"
 compatibility_date = "2026-10-01"
+
+# Restrict which browser origins may call the proxy.
+# Set this to the origin that hosts the add-in before deploying.
+# [vars]
+# ALLOWED_ORIGINS = "https://meu-servidor.com"

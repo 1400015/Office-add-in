@@ -1,0 +1,178 @@
+{
+  "app": {
+    "name": "Assistant IA",
+    "chat": "Chat",
+    "settings": "Paramètres",
+    "history": "Historique",
+    "templates": "Modèles"
+  },
+  "chat": {
+    "placeholder": "Écrivez ici...",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "thinking": "Réflexion...",
+    "newChat": "Nouvelle conversation",
+    "emptyTitle": "Comment puis-je vous aider ?",
+    "emptySubtitle": "Posez une question ou utilisez une action rapide sur votre document.",
+    "insertIntoDocument": "Insérer dans le document",
+    "insertIntoSlide": "Insérer dans la diapositive",
+    "insertIntoCell": "Insérer dans la cellule",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "regenerate": "Régénérer",
+    "contextAttached": "Utilisation de {{type}} comme contexte",
+    "contextTypes": {
+      "none": "Aucun contexte",
+      "selection": "sélection",
+      "document": "document",
+      "range": "plage sélectionnée",
+      "slide": "diapositive actuelle"
+    }
+  },
+  "selectors": {
+    "provider": "Fournisseur",
+    "model": "Modèle",
+    "reasoning": "Raisonnement",
+    "refreshModels": "Actualiser les modèles"
+  },
+  "settings": {
+    "providers": "Fournisseurs",
+    "apiKey": "Clé API",
+    "endpoint": "Point de terminaison",
+    "timeout": "Délai d'attente (ms)",
+    "useProxy": "Passer par un proxy (recommandé pour OpenAI/Claude)",
+    "proxyUrl": "URL du proxy",
+    "testConnection": "Tester la connexion",
+    "save": "Enregistrer",
+    "saved": "Paramètres enregistrés",
+    "keySecurityWarning": "Sans phrase secrète, les clés ne sont que dissimulées sur cet ordinateur. Définissez une phrase secrète pour chiffrer les clés et l'historique. La phrase n'est pas enregistrée ; vous devrez la saisir à nouveau après un rechargement.",
+    "createPassphrase": "Phrase secrète (8 caractères minimum)",
+    "setPassphrase": "Définir la phrase secrète",
+    "unlockPassphrase": "Phrase secrète",
+    "unlock": "Déverrouiller",
+    "lock": "Verrouiller",
+    "unlockToEdit": "Déverrouillez la phrase secrète pour afficher ou modifier les clés API.",
+    "passphraseShort": "Utilisez au moins 8 caractères.",
+    "passphraseWrong": "Phrase secrète incorrecte.",
+    "passphraseFailed": "Impossible d'enregistrer la phrase secrète.",
+    "general": "Général",
+    "temperature": "Température",
+    "maxTokens": "Tokens maximum",
+    "systemPrompt": "Prompt système",
+    "systemPromptPlaceholder": "p. ex. Répondez comme un médecin spécialiste.",
+    "theme": "Thème",
+    "themes": {
+      "light": "Clair",
+      "dark": "Sombre",
+      "auto": "Automatique (suivre Office)"
+    },
+    "language": "Langue",
+    "ollamaWarning": "Ollama s'exécute sur localhost et ne fonctionne que dans Office Desktop. Dans Office sur le web, la sécurité du navigateur bloque les connexions locales.",
+    "corsWarning": "L'API de ce fournisseur n'autorise pas les appels directs depuis le navigateur (pas de CORS). Activez l'option proxy ou utilisez un point de terminaison BFF."
+  },
+  "quickActions": {
+    "word": {
+      "summarize": "Résumer le document",
+      "explain": "Expliquer la sélection",
+      "rewrite": "Réécrire",
+      "translate": "Traduire",
+      "fixGrammar": "Corriger la grammaire",
+      "generate": "Générer du contenu"
+    },
+    "excel": {
+      "explainFormula": "Expliquer la formule",
+      "generateFormula": "Générer une formule",
+      "analyseTable": "Analyser le tableau",
+      "generateVba": "Générer du VBA",
+      "generateScript": "Générer un Office Script"
+    },
+    "powerpoint": {
+      "createPresentation": "Créer des diapositives",
+      "improveSlide": "Améliorer la diapositive",
+      "explain": "Expliquer la diapositive",
+      "fixGrammar": "Corriger la grammaire",
+      "translate": "Traduire la diapositive",
+      "speakerNotes": "Notes du présentateur",
+      "summarizePresentation": "Résumer la présentation"
+    }
+  },
+  "dialogs": {
+    "createTitle": "Créer des diapositives",
+    "topic": "Sujet",
+    "topicPlaceholder": "p. ex. Anatomie de la paroi cardiaque",
+    "slideCount": "Nombre de diapositives",
+    "create": "Créer",
+    "translateTitle": "Traduire la diapositive",
+    "targetLanguage": "Langue cible",
+    "translate": "Traduire",
+    "generate": "Générer",
+    "instruction": "Que faut-il faire ?",
+    "instructionPlaceholder": "Décrivez la formule, la macro, le script ou le texte à générer",
+    "generateTitle": "Générer et insérer",
+    "formulaTitle": "Générer une formule",
+    "vbaTitle": "Générer du VBA",
+    "scriptTitle": "Générer un Office Script"
+  },
+  "templates": {
+    "categories": {
+      "medicine": "Médecine",
+      "veterinary": "Médecine vétérinaire",
+      "pharmacy": "Pharmacie",
+      "research": "Recherche",
+      "programming": "Programmation",
+      "marketing": "Marketing",
+      "legal": "Juridique",
+      "education": "Éducation"
+    },
+    "use": "Utiliser le modèle",
+    "sent": "Envoyé"
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Aucune conversation pour le moment",
+    "delete": "Supprimer",
+    "clearAll": "Tout effacer",
+    "clearConfirmTitle": "Supprimer toutes les conversations ?",
+    "clearConfirmBody": "Les conversations enregistrées et leur historique chiffré ne pourront pas être récupérés.",
+    "clearConfirm": "Tout supprimer",
+    "load": "Ouvrir",
+    "locked": "Verrouillé",
+    "privacy": "Les conversations restent dans ce navigateur. Elles sont en texte clair tant que vous n'avez pas défini de phrase secrète dans les paramètres."
+  },
+  "languages": {
+    "pt": "Portugais",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "fr": "Français",
+    "de": "Allemand"
+  },
+  "errors": {
+    "noApiKey": "Configurez d'abord une clé API dans les paramètres.",
+    "noModel": "Sélectionnez d'abord un modèle.",
+    "uiCrash": "Le complément a rencontré une erreur inattendue. Rechargez pour continuer.",
+    "generic": "Une erreur est survenue. Veuillez réessayer.",
+    "officeNotReady": "Office n'est pas encore prêt.",
+    "ollamaOffline": "Impossible de joindre Ollama. Vérifiez qu'il est démarré : exécutez 'ollama serve' dans un terminal. Si l'erreur persiste, définissez OLLAMA_ORIGINS pour autoriser l'origine de ce complément.",
+    "ollamaWebBlocked": "Ollama ne fonctionne que dans Office Desktop. Dans Office sur le web, la sécurité du navigateur bloque les connexions à localhost.",
+    "network": "Erreur réseau. Vérifiez votre connexion internet et réessayez.",
+    "timeout": "La requête a expiré. Réessayez ou augmentez le délai d'attente dans les paramètres.",
+    "rateLimited": "Limite de requêtes atteinte. Patientez un instant avant de réessayer.",
+    "auth": "Échec de l'authentification. Vérifiez votre clé API dans les paramètres.",
+    "insertFailed": "Impossible d'insérer la réponse.",
+    "noText": "Aucun texte sur lequel travailler.",
+    "noSelection": "Sélectionnez d'abord du texte.",
+    "noFormula": "Sélectionnez une cellule contenant une formule.",
+    "noRange": "Sélectionnez une plage contenant des données.",
+    "noSlideText": "La diapositive active ne contient aucun texte.",
+    "noSlides": "La présentation ne contient aucune diapositive.",
+    "topicRequired": "Un sujet est requis.",
+    "badAiFormat": "Le modèle n'a pas renvoyé le format attendu. Réessayez."
+  },
+  "common": {
+    "loading": "Chargement...",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "reload": "Recharger"
+  }
+}

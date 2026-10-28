@@ -1,12 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { readFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { homedir } from "os";
+import { join, resolve } from "path";
 
 function loadDevCerts(): { key: Buffer; cert: Buffer } | undefined {
   try {
-    const base =
-      process.env.APPDATA ?? `${process.env.HOME}/.office-addin-dev-certs`;
+    // office-addin-dev-certs writes to the home directory on every platform
+    // (including Windows, where APPDATA is not the home directory).
+    const base = join(homedir(), ".office-addin-dev-certs");
     const crt = resolve(base, "localhost.crt");
     const key = resolve(base, "localhost.key");
     if (!existsSync(crt) || !existsSync(key)) return undefined;
@@ -39,7 +41,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(__dirname, "index.html"),
-        commands: resolve(__dirname, "commands.html"),
       },
       output: {
         manualChunks(id: string) {

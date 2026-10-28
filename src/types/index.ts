@@ -9,6 +9,8 @@ export type OfficeHost = "word" | "excel" | "powerpoint" | "unknown";
 
 export type OfficePlatform = "desktop" | "web" | "unknown";
 
+export type AppView = "chat" | "settings" | "history" | "templates";
+
 export type ChatRole = "system" | "user" | "assistant";
 
 export interface ChatMessage {

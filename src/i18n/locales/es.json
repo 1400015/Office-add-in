@@ -1,0 +1,178 @@
+{
+  "app": {
+    "name": "Asistente de IA",
+    "chat": "Chat",
+    "settings": "Configuración",
+    "history": "Historial",
+    "templates": "Plantillas"
+  },
+  "chat": {
+    "placeholder": "Escribe aquí...",
+    "send": "Enviar",
+    "stop": "Detener",
+    "thinking": "Pensando...",
+    "newChat": "Nueva conversación",
+    "emptyTitle": "¿Cómo puedo ayudarte hoy?",
+    "emptySubtitle": "Pregunta lo que quieras o usa una acción rápida en tu documento.",
+    "insertIntoDocument": "Insertar en el documento",
+    "insertIntoSlide": "Insertar en la diapositiva",
+    "insertIntoCell": "Insertar en la celda",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "regenerate": "Regenerar",
+    "contextAttached": "Usando {{type}} como contexto",
+    "contextTypes": {
+      "none": "Sin contexto",
+      "selection": "selección",
+      "document": "documento",
+      "range": "rango seleccionado",
+      "slide": "diapositiva actual"
+    }
+  },
+  "selectors": {
+    "provider": "Proveedor",
+    "model": "Modelo",
+    "reasoning": "Razonamiento",
+    "refreshModels": "Actualizar modelos"
+  },
+  "settings": {
+    "providers": "Proveedores",
+    "apiKey": "Clave de API",
+    "endpoint": "Endpoint",
+    "timeout": "Tiempo de espera (ms)",
+    "useProxy": "Usar proxy (recomendado para OpenAI/Claude)",
+    "proxyUrl": "URL del proxy",
+    "testConnection": "Probar conexión",
+    "save": "Guardar",
+    "saved": "Configuración guardada",
+    "keySecurityWarning": "Sin una frase de contraseña, las claves solo se ofuscan en este equipo. Define una frase para cifrar las claves y el historial. La frase no se guarda; tendrás que introducirla de nuevo al recargar.",
+    "createPassphrase": "Frase de contraseña (mínimo 8 caracteres)",
+    "setPassphrase": "Definir frase de contraseña",
+    "unlockPassphrase": "Frase de contraseña",
+    "unlock": "Desbloquear",
+    "lock": "Bloquear",
+    "unlockToEdit": "Desbloquea la frase de contraseña para ver o cambiar las claves de API.",
+    "passphraseShort": "Usa al menos 8 caracteres.",
+    "passphraseWrong": "Frase de contraseña incorrecta.",
+    "passphraseFailed": "No se pudo guardar la frase de contraseña.",
+    "general": "General",
+    "temperature": "Temperatura",
+    "maxTokens": "Tokens máximos",
+    "systemPrompt": "Prompt del sistema",
+    "systemPromptPlaceholder": "p. ej. Responde como médico especialista.",
+    "theme": "Tema",
+    "themes": {
+      "light": "Claro",
+      "dark": "Oscuro",
+      "auto": "Automático (seguir Office)"
+    },
+    "language": "Idioma",
+    "ollamaWarning": "Ollama se ejecuta en localhost y solo funciona en Office Desktop. En Office para la web, la seguridad del navegador bloquea las conexiones locales.",
+    "corsWarning": "La API de este proveedor no permite llamadas directas desde el navegador (sin CORS). Activa la opción de proxy o usa un endpoint BFF."
+  },
+  "quickActions": {
+    "word": {
+      "summarize": "Resumir documento",
+      "explain": "Explicar selección",
+      "rewrite": "Reescribir",
+      "translate": "Traducir",
+      "fixGrammar": "Corregir gramática",
+      "generate": "Generar contenido"
+    },
+    "excel": {
+      "explainFormula": "Explicar fórmula",
+      "generateFormula": "Generar fórmula",
+      "analyseTable": "Analizar tabla",
+      "generateVba": "Generar VBA",
+      "generateScript": "Generar Office Script"
+    },
+    "powerpoint": {
+      "createPresentation": "Crear diapositivas",
+      "improveSlide": "Mejorar diapositiva",
+      "explain": "Explicar diapositiva",
+      "fixGrammar": "Corregir gramática",
+      "translate": "Traducir diapositiva",
+      "speakerNotes": "Notas del ponente",
+      "summarizePresentation": "Resumir presentación"
+    }
+  },
+  "dialogs": {
+    "createTitle": "Crear diapositivas",
+    "topic": "Tema",
+    "topicPlaceholder": "p. ej. Anatomía de la pared cardíaca",
+    "slideCount": "Número de diapositivas",
+    "create": "Crear",
+    "translateTitle": "Traducir diapositiva",
+    "targetLanguage": "Idioma de destino",
+    "translate": "Traducir",
+    "generate": "Generar",
+    "instruction": "¿Qué debe hacerse?",
+    "instructionPlaceholder": "Describe la fórmula, macro, script o texto que quieres generar",
+    "generateTitle": "Generar e insertar",
+    "formulaTitle": "Generar fórmula",
+    "vbaTitle": "Generar VBA",
+    "scriptTitle": "Generar Office Script"
+  },
+  "templates": {
+    "categories": {
+      "medicine": "Medicina",
+      "veterinary": "Medicina veterinaria",
+      "pharmacy": "Farmacia",
+      "research": "Investigación",
+      "programming": "Programación",
+      "marketing": "Marketing",
+      "legal": "Jurídico",
+      "education": "Educación"
+    },
+    "use": "Usar plantilla",
+    "sent": "Enviado"
+  },
+  "history": {
+    "title": "Historial",
+    "empty": "Aún no hay conversaciones",
+    "delete": "Eliminar",
+    "clearAll": "Borrar todo",
+    "clearConfirmTitle": "¿Eliminar todas las conversaciones?",
+    "clearConfirmBody": "Las conversaciones guardadas y el historial cifrado no se pueden recuperar.",
+    "clearConfirm": "Eliminar todo",
+    "load": "Abrir",
+    "locked": "Bloqueado",
+    "privacy": "Las conversaciones permanecen en este navegador. Están en texto plano hasta que definas una frase de contraseña en Configuración."
+  },
+  "languages": {
+    "pt": "Portugués",
+    "en": "Inglés",
+    "es": "Español",
+    "fr": "Francés",
+    "de": "Alemán"
+  },
+  "errors": {
+    "noApiKey": "Configura primero una clave de API en Configuración.",
+    "noModel": "Selecciona primero un modelo.",
+    "uiCrash": "El add-in encontró un error inesperado. Recarga para continuar.",
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "officeNotReady": "Office aún no está listo.",
+    "ollamaOffline": "No se puede conectar con Ollama. Comprueba que esté en ejecución: ejecuta 'ollama serve' en un terminal. Si el error persiste, define OLLAMA_ORIGINS para permitir el origen de este add-in.",
+    "ollamaWebBlocked": "Ollama solo funciona en Office Desktop. En Office para la web, la seguridad del navegador bloquea las conexiones a localhost.",
+    "network": "Error de red. Comprueba tu conexión a internet e inténtalo de nuevo.",
+    "timeout": "La solicitud agotó el tiempo de espera. Inténtalo de nuevo o aumenta el tiempo de espera en Configuración.",
+    "rateLimited": "Límite de solicitudes alcanzado. Espera un momento antes de volver a intentarlo.",
+    "auth": "Error de autenticación. Comprueba tu clave de API en Configuración.",
+    "insertFailed": "No se pudo insertar la respuesta.",
+    "noText": "No hay texto con el que trabajar.",
+    "noSelection": "Selecciona primero algún texto.",
+    "noFormula": "Selecciona una celda que contenga una fórmula.",
+    "noRange": "Selecciona un rango con datos.",
+    "noSlideText": "La diapositiva activa no tiene texto.",
+    "noSlides": "La presentación no tiene diapositivas.",
+    "topicRequired": "Se requiere un tema.",
+    "badAiFormat": "El modelo no devolvió el formato esperado. Inténtalo de nuevo."
+  },
+  "common": {
+    "loading": "Cargando...",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "reload": "Recargar"
+  }
+}

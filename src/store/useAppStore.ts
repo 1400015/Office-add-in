@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  AppView,
   ChatHistory,
   ChatMessage,
   OfficeHost,
@@ -19,6 +20,7 @@ import {
 } from "../config/reasoningProfiles";
 import { StorageService, StorageLockedError } from "../services/StorageService";
 import { HistoryService } from "../services/HistoryService";
+import { ModelService } from "../services/ModelService";
 import { STORAGE_KEYS } from "../constants";
 import { logger } from "../services/LoggerService";
 import { CryptoService } from "../services/CryptoService";
@@ -43,6 +45,7 @@ interface AppState {
   systemPrompt: string;
   theme: ThemeMode;
   language: string;
+  view: AppView;
 
   currentChatId: string | null;
   messages: ChatMessage[];
@@ -55,7 +58,6 @@ interface AppState {
   passphraseEnabled: boolean;
 
   setOfficeInfo: (host: OfficeHost, platform: OfficePlatform) => void;
-  setProviderConfigs: (configs: Record<ProviderId, ProviderConfig>) => void;
   updateProviderConfig: (
     id: ProviderId,
     patch: Partial<ProviderConfig>
@@ -68,6 +70,7 @@ interface AppState {
   setSystemPrompt: (prompt: string) => void;
   setTheme: (theme: ThemeMode) => void;
   setLanguage: (language: string) => void;
+  setView: (view: AppView) => void;
 
   startNewChat: () => void;
   loadChat: (id: string) => void;
@@ -97,6 +100,13 @@ function newChatId(): string {
   return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function initialView(): AppView {
+  if (typeof window === "undefined") return "chat";
+  return new URLSearchParams(window.location.search).get("view") === "settings"
+    ? "settings"
+    : "chat";
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   host: "unknown",
   platform: "unknown",
@@ -111,6 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   systemPrompt: "",
   theme: "auto",
   language: "en",
+  view: initialView(),
 
   currentChatId: null,
   messages: [],
@@ -124,14 +135,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setOfficeInfo: (host, platform) => set({ host, platform, officeReady: true }),
 
-  setProviderConfigs: (configs) => set({ providerConfigs: configs }),
-  updateProviderConfig: (id, patch) =>
+  updateProviderConfig: (id, patch) => {
+    // The cached model list depends on the credentials and endpoint.
+    ModelService.invalidate(id);
     set((state) => ({
       providerConfigs: {
         ...state.providerConfigs,
         [id]: { ...state.providerConfigs[id], ...patch },
       },
-    })),
+    }));
+  },
   setActiveProvider: (id) => set({ activeProvider: id }),
   setActiveModel: (model) => set({ activeModel: model }),
   setTemperature: (value) => set({ temperature: value }),
@@ -140,11 +153,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSystemPrompt: (prompt) => set({ systemPrompt: prompt }),
   setTheme: (theme) => set({ theme }),
   setLanguage: (language) => set({ language }),
+  setView: (view) => set({ view }),
 
   startNewChat: () =>
     set({
       currentChatId: null,
       messages: [],
+      isStreaming: false,
       streamingContent: "",
       error: null,
     }),
@@ -226,7 +241,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (error instanceof StorageLockedError) secretsLocked = true;
       else throw error;
     }
-    const passphraseEnabled = await CryptoService.hasPassphrase();
+    const passphraseEnabled = await CryptoService.hasPassphrase().catch(
+      () => false
+    );
     const [
       activeProvider,
       temperature,

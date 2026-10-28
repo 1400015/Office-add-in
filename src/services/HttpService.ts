@@ -21,15 +21,31 @@ function isRetryable(status?: number): boolean {
   return status === 429 || status >= 500;
 }
 
+/**
+ * Combines abort signals without AbortSignal.any(), which is missing from
+ * older WebViews used by Office (notably macOS before 14.4).
+ */
+function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal {
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  for (const signal of signals) {
+    if (!signal) continue;
+    if (signal.aborted) {
+      controller.abort();
+      break;
+    }
+    signal.addEventListener("abort", abort, { once: true });
+  }
+  return controller.signal;
+}
+
 export async function httpRequest<T>(req: HttpRequest): Promise<T> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), req.timeout);
-    const combinedSignal = req.signal
-      ? AbortSignal.any([controller.signal, req.signal])
-      : controller.signal;
+    const combinedSignal = combineSignals([controller.signal, req.signal]);
 
     try {
       const response = await fetch(req.url, {
@@ -53,6 +69,9 @@ export async function httpRequest<T>(req: HttpRequest): Promise<T> {
     } catch (error) {
       lastError = error;
       clearTimeout(timeoutId);
+
+      // A caller cancellation is intentional: never retry it.
+      if (req.signal?.aborted) break;
 
       const status = error instanceof ProviderError ? error.status : undefined;
       const retryable = isRetryable(status);
@@ -104,9 +123,7 @@ export interface StreamRequest {
 export async function httpStream(req: StreamRequest): Promise<void> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), req.timeout);
-  const combinedSignal = req.signal
-    ? AbortSignal.any([controller.signal, req.signal])
-    : controller.signal;
+  const combinedSignal = combineSignals([controller.signal, req.signal]);
 
   try {
     const response = await fetch(req.url, {
