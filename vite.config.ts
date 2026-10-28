@@ -41,6 +41,28 @@ export default defineConfig({
         index: resolve(__dirname, "index.html"),
         commands: resolve(__dirname, "commands.html"),
       },
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules")) {
+            if (id.includes("@fluentui")) return "vendor-fluentui";
+            if (
+              id.includes("react/") ||
+              id.includes("react-dom/") ||
+              id.includes("scheduler/")
+            ) {
+              return "vendor-react";
+            }
+            if (
+              id.includes("i18next") ||
+              id.includes("zustand") ||
+              id.includes("idb/")
+            ) {
+              return "vendor-utils";
+            }
+          }
+          return undefined;
+        },
+      },
     },
   },
   publicDir: "public",
