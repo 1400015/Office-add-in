@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Tab, TabList, Button } from "@fluentui/react-components";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { Tab, TabList, Button, Spinner } from "@fluentui/react-components";
 import {
   Chat20Regular,
   Settings20Regular,
@@ -9,9 +9,16 @@ import {
 } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { ChatView } from "./ChatView";
-import { SettingsView } from "./SettingsView";
-import { HistoryView } from "./HistoryView";
-import { TemplatesView } from "./TemplatesView";
+
+const SettingsView = lazy(() =>
+  import("./SettingsView").then((m) => ({ default: m.SettingsView }))
+);
+const HistoryView = lazy(() =>
+  import("./HistoryView").then((m) => ({ default: m.HistoryView }))
+);
+const TemplatesView = lazy(() =>
+  import("./TemplatesView").then((m) => ({ default: m.TemplatesView }))
+);
 import { useAppStore } from "../store/useAppStore";
 import { useOfficeInit } from "../hooks/useOfficeInit";
 
@@ -78,9 +85,21 @@ export function Taskpane(): JSX.Element {
 
       <div className="app-body">
         {view === "chat" && <ChatView />}
-        {view === "templates" && <TemplatesView />}
-        {view === "history" && <HistoryView />}
-        {view === "settings" && <SettingsView />}
+        {view === "templates" && (
+          <Suspense fallback={<Spinner />}>
+            <TemplatesView />
+          </Suspense>
+        )}
+        {view === "history" && (
+          <Suspense fallback={<Spinner />}>
+            <HistoryView />
+          </Suspense>
+        )}
+        {view === "settings" && (
+          <Suspense fallback={<Spinner />}>
+            <SettingsView />
+          </Suspense>
+        )}
       </div>
     </div>
   );

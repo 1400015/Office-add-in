@@ -11,6 +11,36 @@ interface LogEntry {
 const MAX_ENTRIES = 500;
 const entries: LogEntry[] = [];
 
+const SECRET_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9_-]{8,}/g,
+  /Bearer\s+[A-Za-z0-9._~+/-]{8,}/gi,
+  /x-api-key\s*[:=]\s*['"]?[A-Za-z0-9._~+/-]{8,}/gi,
+  /AIza[A-Za-z0-9_-]{10,}/g,
+  /gsk_[A-Za-z0-9]{20,}/g,
+  /key\s*[:=]\s*['"]?[A-Za-z0-9._~+/-]{16,}/gi,
+];
+
+export function sanitizeText(text: string): string {
+  return SECRET_PATTERNS.reduce(
+    (acc, pattern) => acc.replace(pattern, "***REDACTED***"),
+    text
+  );
+}
+
+function sanitizeMeta(meta: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    if (typeof value === "string") {
+      result[key] = sanitizeText(value);
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+      result[key] = sanitizeMeta(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function emit(
   level: LogLevel,
   scope: string,
@@ -21,8 +51,8 @@ function emit(
     timestamp: new Date().toISOString(),
     level,
     scope,
-    message,
-    meta,
+    message: sanitizeText(message),
+    meta: meta ? sanitizeMeta(meta) : undefined,
   };
   entries.push(entry);
   if (entries.length > MAX_ENTRIES) {

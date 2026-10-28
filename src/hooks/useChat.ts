@@ -6,6 +6,8 @@ import { ModelService } from "../services/ModelService";
 import { HistoryService } from "../services/HistoryService";
 import type { ChatMessage } from "../types";
 import { logger } from "../services/LoggerService";
+import { friendlyError } from "../services/ErrorService";
+import { getPlatform } from "../services/OfficeService";
 
 function uid(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -30,7 +32,9 @@ export function useChat() {
       try {
         ensureConfigured();
       } catch (error) {
-        store.setError(error instanceof Error ? error.message : "generic");
+        store.setError(
+          friendlyError(error, { provider: store.activeProvider })
+        );
         return;
       }
 
@@ -99,7 +103,10 @@ export function useChat() {
         });
         store.setStreaming(false);
         store.setError(
-          error instanceof Error ? error.message : "errors.generic"
+          friendlyError(error, {
+            provider: useAppStore.getState().activeProvider,
+            onWeb: getPlatform() === "web",
+          })
         );
       }
     },
@@ -163,9 +170,12 @@ export function useChat() {
         logger.error("chat", "quick action failed", {
           error: error instanceof Error ? error.message : String(error),
         });
-        useAppStore
-          .getState()
-          .setError(error instanceof Error ? error.message : "errors.generic");
+        useAppStore.getState().setError(
+          friendlyError(error, {
+            provider: useAppStore.getState().activeProvider,
+            onWeb: getPlatform() === "web",
+          })
+        );
         return null;
       } finally {
         useAppStore.getState().setPendingAction(null);
