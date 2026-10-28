@@ -91,7 +91,7 @@ export function ChatView(): JSX.Element {
                 : error === "noModel"
                   ? t("errors.noModel")
                   : error.startsWith("errors.")
-                    ? t("errors.generic")
+                    ? t(error)
                     : error}
             </MessageBarBody>
             <MessageBarActions>
