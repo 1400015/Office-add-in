@@ -112,12 +112,10 @@ Deploy `manifest.xml` through the Microsoft 365 admin center (**Settings > Integ
 Open the **Settings** tab inside the add-in:
 
 - Add an **API key** and optional **endpoint** per provider.
-- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require either:
-  - the **proxy option** with a BFF endpoint (e.g. a Cloudflare Worker or Azure Function that forwards requests and injects the API key server-side), or
-  - a provider endpoint that enables CORS.
+- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require the **proxy** in [`proxy/worker.ts`](proxy/worker.ts). Deploy it with `npx wrangler deploy` and paste the worker origin into **Proxy URL**. The add-in sends `X-OUAI-Upstream`; the worker only forwards to allowlisted provider hosts and adds CORS. The API key stays in the `Authorization` header, never in the URL.
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
 
-> ⚠️ **Security note**: API keys are obfuscated in `OfficeRuntime.storage` (AES-GCM), but the key is derived from a constant stored beside the data. That stops casual inspection of logs; it does **not** protect a shared or compromised machine. Chat history in IndexedDB is plain text. Secrets are masked in the UI (last 4 characters) and redacted from internal logs.
+> ⚠️ **Security note**: Without a passphrase, API keys are only obfuscated in `OfficeRuntime.storage`. Set a passphrase in Settings to encrypt keys and chat history with a key that stays in memory for the session (it is not stored). Secrets are masked in the UI and redacted from logs.
 
 ## Troubleshooting
 

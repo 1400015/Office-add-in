@@ -82,6 +82,14 @@ export abstract class BaseProvider {
 
   protected abstract extractTokenFromEvent(data: unknown): string | null;
 
+  protected requestHeaders(): Record<string, string> {
+    const headers = { ...this.buildHeaders() };
+    if (this.config.useProxy && this.config.proxyUrl.trim()) {
+      headers["X-OUAI-Upstream"] = this.config.endpoint.replace(/\/$/, "");
+    }
+    return headers;
+  }
+
   async getModels(): Promise<AIModel[]> {
     return this.definition.defaultModels.map((id) => ({
       id,
@@ -109,7 +117,7 @@ export abstract class BaseProvider {
     const data = await httpRequest<unknown>({
       url: this.buildUrl(this.chatPath()),
       method: "POST",
-      headers: this.buildHeaders(),
+      headers: this.requestHeaders(),
       body,
       timeout: this.config.timeout,
       provider: this.id,
@@ -136,7 +144,7 @@ export abstract class BaseProvider {
 
     await httpStream({
       url: this.buildUrl(this.chatPath()),
-      headers: this.buildHeaders(),
+      headers: this.requestHeaders(),
       body,
       timeout: this.config.timeout,
       provider: this.id,

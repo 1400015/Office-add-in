@@ -363,59 +363,23 @@ Na secção **General**:
 | Privacidade total | **Ollama** (Desktop apenas) | Dados nunca saem do teu PC |
 | Prototipagem rápida | **Gemini** (free tier) | Bom free tier, CORS nativo |
 
-> ⚠️ **Nota de segurança**: As API keys são guardadas localmente em **texto simples** (`OfficeRuntime.storage`). Não há storage encriptado no Office.js. Usa apenas em computadores de confiança.
+> ⚠️ **Nota de segurança**: Sem frase-passe, as API keys ficam só ofuscadas. Nas Definições podes definir uma frase-passe: as chaves e o histórico passam a ser cifrados e a frase não é guardada. Depois de recarregar o painel tens de a introduzir outra vez.
 
 ### Configurar um proxy (BFF) para OpenAI/Claude
 
-Como a API da OpenAI e Anthropic não envia headers CORS, precisas de um proxy:
+A API da OpenAI e da Anthropic não envia CORS. O suplemento já sabe falar com o worker deste repositório.
 
-#### Opção A — Cloudflare Worker (grátis, recomendado)
-
-```javascript
-// worker.js — exemplo simplificado
-export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    const provider = url.searchParams.get("provider"); // "openai" ou "claude"
-    const apiKey = url.searchParams.get("key");
-
-    const targetUrl = provider === "openai"
-      ? "https://api.openai.com/v1/chat/completions"
-      : "https://api.anthropic.com/v1/messages";
-
-    const headers = new Headers(request.headers);
-    headers.delete("host");
-    if (provider === "openai") {
-      headers.set("Authorization", `Bearer ${apiKey}`);
-    } else {
-      headers.set("x-api-key", apiKey);
-      headers.set("anthropic-version", "2023-06-01");
-    }
-
-    const response = await fetch(targetUrl, {
-      method: request.method,
-      headers,
-      body: request.body,
-    });
-
-    // Adicionar CORS
-    const corsResponse = new Response(response.body, response);
-    corsResponse.headers.set("Access-Control-Allow-Origin", "*");
-    corsResponse.headers.set("Access-Control-Allow-Headers", "*");
-    return corsResponse;
-  },
-};
+```bash
+npx wrangler deploy
 ```
 
-Deploy: `npx wrangler deploy worker.js`
+O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
 
-Depois, no add-in, ativa **Use proxy** e coloca o URL do Worker em **Proxy URL**.
+Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `https://ouai-proxy.workers.dev`) em **URL do proxy**.
 
-> ⚠️ **Atenção**: Um proxy que expõe a API key no URL é inseguro. Em produção, usa autenticação no Worker ou injeta a key server-side (nunca no cliente).
+#### Opção antiga — não uses a chave no URL
 
-#### Opção B — Azure Function
-
-Similar ao Cloudflare Worker, mas no Azure. Útil se a tua organização já usa Azure.
+Um worker que lê `?key=` expõe a chave em logs. Não uses esse padrão.
 
 ---
 

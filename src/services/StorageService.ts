@@ -4,6 +4,13 @@ import { STORAGE_KEYS } from "../constants";
 
 const ENCRYPTED_KEYS = new Set<string>([STORAGE_KEYS.providerConfigs]);
 
+export class StorageLockedError extends Error {
+  constructor() {
+    super("locked");
+    this.name = "StorageLockedError";
+  }
+}
+
 function storage(): OfficeRuntime.Storage {
   return OfficeRuntime.storage;
 }
@@ -15,7 +22,14 @@ export const StorageService = {
       if (value === undefined || value === null) return null;
       let text = value as string;
       if (ENCRYPTED_KEYS.has(key) && CryptoService.isEncrypted(text)) {
-        text = await CryptoService.decrypt(text);
+        try {
+          text = await CryptoService.decrypt(text);
+        } catch (error) {
+          if (error instanceof Error && error.message === "locked") {
+            throw new StorageLockedError();
+          }
+          throw error;
+        }
       }
       return JSON.parse(text) as T;
     } catch (error) {

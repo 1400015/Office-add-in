@@ -45,7 +45,16 @@
     "testConnection": "Testar ligação",
     "save": "Guardar",
     "saved": "Definições guardadas",
-    "keySecurityWarning": "As chaves ficam neste computador. Estão ofuscadas no armazenamento do Office, mas a chave de ofuscação fica ao lado dos dados, por isso isto não protege num computador partilhado ou comprometido.",
+    "keySecurityWarning": "Sem frase-passe, as chaves ficam só ofuscadas neste computador. Define uma frase-passe para cifrar as chaves e o histórico. A frase não fica guardada; tens de a introduzir outra vez depois de recarregar.",
+    "createPassphrase": "Frase-passe (pelo menos 8 caracteres)",
+    "setPassphrase": "Definir frase-passe",
+    "unlockPassphrase": "Frase-passe",
+    "unlock": "Desbloquear",
+    "lock": "Bloquear",
+    "unlockToEdit": "Desbloqueia a frase-passe para ver ou alterar as chaves.",
+    "passphraseShort": "Usa pelo menos 8 caracteres.",
+    "passphraseWrong": "Frase-passe errada.",
+    "passphraseFailed": "Não foi possível guardar a frase-passe.",
     "general": "Geral",
     "temperature": "Temperatura",
     "maxTokens": "Tokens máximos",
@@ -123,7 +132,8 @@
     "delete": "Eliminar",
     "clearAll": "Limpar tudo",
     "load": "Abrir",
-    "privacy": "As conversas ficam neste browser (IndexedDB) em texto simples, incluindo o que colares a partir de um documento."
+    "locked": "Bloqueado",
+    "privacy": "As conversas ficam neste browser. Estão em texto simples até definires uma frase-passe nas Definições."
   },
   "languages": {
     "pt": "Português",

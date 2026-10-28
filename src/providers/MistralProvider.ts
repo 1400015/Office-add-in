@@ -79,7 +79,7 @@ export class MistralProvider extends BaseProvider {
       const data = await httpRequest<{ data?: Array<{ id: string }> }>({
         url: this.buildUrl("/models"),
         method: "GET",
-        headers: this.buildHeaders(),
+        headers: this.requestHeaders(),
         timeout: this.config.timeout,
         provider: this.id,
       });

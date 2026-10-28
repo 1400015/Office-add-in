@@ -2,7 +2,10 @@ import { Button, Text } from "@fluentui/react-components";
 import { Delete20Regular, DocumentText20Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
-import { HistoryService } from "../services/HistoryService";
+import {
+  HistoryService,
+  LOCKED_HISTORY_TITLE,
+} from "../services/HistoryService";
 import { PROVIDER_DEFINITIONS } from "../config/providers";
 
 export function HistoryView(): JSX.Element {
@@ -57,12 +60,16 @@ export function HistoryView(): JSX.Element {
         >
           <div
             style={{ flex: 1, minWidth: 0, cursor: "pointer" }}
-            onClick={() => loadChat(chat.id)}
+            onClick={() => {
+              if (chat.title !== LOCKED_HISTORY_TITLE) loadChat(chat.id);
+            }}
           >
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <DocumentText20Regular />
               <Text truncate style={{ fontWeight: 600 }}>
-                {chat.title}
+                {chat.title === LOCKED_HISTORY_TITLE
+                  ? t("history.locked")
+                  : chat.title}
               </Text>
             </div>
             <Text size={200}>

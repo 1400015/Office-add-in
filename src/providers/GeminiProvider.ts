@@ -96,7 +96,7 @@ export class GeminiProvider extends BaseProvider {
     const data = await httpRequest<GeminiResponse>({
       url: this.chatUrl(options.model, false),
       method: "POST",
-      headers: this.buildHeaders(),
+      headers: this.requestHeaders(),
       body,
       timeout: this.config.timeout,
       provider: this.id,
@@ -121,7 +121,7 @@ export class GeminiProvider extends BaseProvider {
     });
     await httpStream({
       url: `${this.chatUrl(options.model, true)}&alt=sse`,
-      headers: this.buildHeaders(),
+      headers: this.requestHeaders(),
       body,
       timeout: this.config.timeout,
       provider: this.id,
@@ -163,7 +163,7 @@ export class GeminiProvider extends BaseProvider {
       }>({
         url: `${this.buildUrl("/models")}?key=${encodeURIComponent(this.requireApiKey())}`,
         method: "GET",
-        headers: this.buildHeaders(),
+        headers: this.requestHeaders(),
         timeout: this.config.timeout,
         provider: this.id,
       });

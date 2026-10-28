@@ -39,6 +39,14 @@ export function SettingsView(): JSX.Element {
   const systemPrompt = useAppStore((s) => s.systemPrompt);
   const theme = useAppStore((s) => s.theme);
   const language = useAppStore((s) => s.language);
+  const secretsLocked = useAppStore((s) => s.secretsLocked);
+  const passphraseEnabled = useAppStore((s) => s.passphraseEnabled);
+  const createPassphrase = useAppStore((s) => s.createPassphrase);
+  const unlockSecrets = useAppStore((s) => s.unlockSecrets);
+  const lockSecrets = useAppStore((s) => s.lockSecrets);
+  const [phrase, setPhrase] = useState("");
+  const [phraseError, setPhraseError] = useState<string | null>(null);
+  const [phraseBusy, setPhraseBusy] = useState(false);
   const setTemperature = useAppStore((s) => s.setTemperature);
   const setMaxTokens = useAppStore((s) => s.setMaxTokens);
   const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
@@ -77,6 +85,33 @@ export function SettingsView(): JSX.Element {
       }));
     } finally {
       setTesting(null);
+    }
+  };
+
+  const onPassphrase = async (): Promise<void> => {
+    setPhraseBusy(true);
+    setPhraseError(null);
+    try {
+      if (!passphraseEnabled) {
+        await createPassphrase(phrase);
+        setPhrase("");
+        return;
+      }
+      const ok = await unlockSecrets(phrase);
+      if (!ok) {
+        setPhraseError(t("settings.passphraseWrong"));
+        return;
+      }
+      setPhrase("");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      setPhraseError(
+        code === "passphrase-short"
+          ? t("settings.passphraseShort")
+          : t("settings.passphraseFailed")
+      );
+    } finally {
+      setPhraseBusy(false);
     }
   };
 
@@ -174,120 +209,171 @@ export function SettingsView(): JSX.Element {
             <div className="warning-banner">
               {t("settings.keySecurityWarning")}
             </div>
+            <div className="settings-field">
+              {passphraseEnabled && !secretsLocked ? (
+                <Button size="small" onClick={lockSecrets}>
+                  {t("settings.lock")}
+                </Button>
+              ) : (
+                <>
+                  <Field
+                    label={
+                      passphraseEnabled
+                        ? t("settings.unlockPassphrase")
+                        : t("settings.createPassphrase")
+                    }
+                  >
+                    <Input
+                      type="password"
+                      value={phrase}
+                      autoComplete="new-password"
+                      onChange={(_, data) => setPhrase(data.value)}
+                    />
+                  </Field>
+                  <Button
+                    size="small"
+                    disabled={phraseBusy || phrase.trim().length === 0}
+                    onClick={() => void onPassphrase()}
+                  >
+                    {passphraseEnabled
+                      ? t("settings.unlock")
+                      : t("settings.setPassphrase")}
+                  </Button>
+                </>
+              )}
+              {phraseError && (
+                <Text
+                  size={200}
+                  style={{ color: "var(--colorPaletteRedForeground1)" }}
+                >
+                  {phraseError}
+                </Text>
+              )}
+            </div>
             {ollamaBlocked && (
               <MessageBar intent="warning">
                 <MessageBarBody>{t("settings.ollamaWarning")}</MessageBarBody>
               </MessageBar>
             )}
-            {PROVIDER_ORDER.map((id) => {
-              const def = PROVIDER_DEFINITIONS[id];
-              const config = providerConfigs[id];
-              const corsIssue = !def.corsSafe;
-              const result = testResult[id];
-              return (
-                <Accordion
-                  key={id}
-                  collapsible
-                  style={{
-                    border: "1px solid var(--colorNeutralStroke2, #e0e0e0)",
-                    borderRadius: 6,
-                    marginTop: 8,
-                  }}
-                >
-                  <AccordionItem value={id}>
-                    <AccordionHeader>{def.name}</AccordionHeader>
-                    <AccordionPanel>
-                      <div className="settings-field">
-                        <Field label={def.apiKeyLabel}>
-                          <Input
-                            type="password"
-                            value={config.apiKey}
-                            autoComplete="off"
-                            onChange={(_, data) =>
-                              updateProviderConfig(id, { apiKey: data.value })
-                            }
-                          />
-                        </Field>
-                        {config.apiKey.length > 0 && (
-                          <Text size={200}>••••{config.apiKey.slice(-4)}</Text>
-                        )}
-                      </div>
-                      <div className="settings-field">
-                        <Field label={t("settings.endpoint")}>
-                          <Input
-                            value={config.endpoint}
-                            onChange={(_, data) =>
-                              updateProviderConfig(id, { endpoint: data.value })
-                            }
-                          />
-                        </Field>
-                      </div>
-                      <div className="settings-field">
-                        <Field label={t("settings.timeout")}>
-                          <Input
-                            type="number"
-                            value={String(config.timeout)}
-                            onChange={(_, data) =>
-                              updateProviderConfig(id, {
-                                timeout:
-                                  Number(data.value) || def.defaultTimeout,
-                              })
-                            }
-                          />
-                        </Field>
-                      </div>
-                      <div className="settings-field">
-                        <Switch
-                          checked={config.useProxy}
-                          onChange={(_, data) =>
-                            updateProviderConfig(id, {
-                              useProxy: Boolean(data.checked),
-                            })
-                          }
-                          label={t("settings.useProxy")}
-                        />
-                      </div>
-                      {config.useProxy && (
+            {secretsLocked ? (
+              <MessageBar intent="warning">
+                <MessageBarBody>{t("settings.unlockToEdit")}</MessageBarBody>
+              </MessageBar>
+            ) : (
+              PROVIDER_ORDER.map((id) => {
+                const def = PROVIDER_DEFINITIONS[id];
+                const config = providerConfigs[id];
+                const corsIssue = !def.corsSafe;
+                const result = testResult[id];
+                return (
+                  <Accordion
+                    key={id}
+                    collapsible
+                    style={{
+                      border: "1px solid var(--colorNeutralStroke2, #e0e0e0)",
+                      borderRadius: 6,
+                      marginTop: 8,
+                    }}
+                  >
+                    <AccordionItem value={id}>
+                      <AccordionHeader>{def.name}</AccordionHeader>
+                      <AccordionPanel>
                         <div className="settings-field">
-                          <Field label={t("settings.proxyUrl")}>
+                          <Field label={def.apiKeyLabel}>
                             <Input
-                              value={config.proxyUrl}
-                              placeholder="https://your-proxy.example.com"
+                              type="password"
+                              value={config.apiKey}
+                              autoComplete="off"
+                              onChange={(_, data) =>
+                                updateProviderConfig(id, { apiKey: data.value })
+                              }
+                            />
+                          </Field>
+                          {config.apiKey.length > 0 && (
+                            <Text size={200}>
+                              ••••{config.apiKey.slice(-4)}
+                            </Text>
+                          )}
+                        </div>
+                        <div className="settings-field">
+                          <Field label={t("settings.endpoint")}>
+                            <Input
+                              value={config.endpoint}
                               onChange={(_, data) =>
                                 updateProviderConfig(id, {
-                                  proxyUrl: data.value,
+                                  endpoint: data.value,
                                 })
                               }
                             />
                           </Field>
                         </div>
-                      )}
-                      {corsIssue && !config.useProxy && (
-                        <MessageBar intent="warning">
-                          <MessageBarBody>
-                            {t("settings.corsWarning")}
-                          </MessageBarBody>
-                        </MessageBar>
-                      )}
-                      {result && (
-                        <MessageBar intent={result.ok ? "success" : "error"}>
-                          <MessageBarBody>{result.message}</MessageBarBody>
-                        </MessageBar>
-                      )}
-                      <Button
-                        size="small"
-                        onClick={() => void onTest(id)}
-                        disabled={testing === id}
-                      >
-                        {testing === id
-                          ? t("common.loading")
-                          : t("settings.testConnection")}
-                      </Button>
-                    </AccordionPanel>
-                  </AccordionItem>
-                </Accordion>
-              );
-            })}
+                        <div className="settings-field">
+                          <Field label={t("settings.timeout")}>
+                            <Input
+                              type="number"
+                              value={String(config.timeout)}
+                              onChange={(_, data) =>
+                                updateProviderConfig(id, {
+                                  timeout:
+                                    Number(data.value) || def.defaultTimeout,
+                                })
+                              }
+                            />
+                          </Field>
+                        </div>
+                        <div className="settings-field">
+                          <Switch
+                            checked={config.useProxy}
+                            onChange={(_, data) =>
+                              updateProviderConfig(id, {
+                                useProxy: Boolean(data.checked),
+                              })
+                            }
+                            label={t("settings.useProxy")}
+                          />
+                        </div>
+                        {config.useProxy && (
+                          <div className="settings-field">
+                            <Field label={t("settings.proxyUrl")}>
+                              <Input
+                                value={config.proxyUrl}
+                                placeholder="https://your-proxy.example.com"
+                                onChange={(_, data) =>
+                                  updateProviderConfig(id, {
+                                    proxyUrl: data.value,
+                                  })
+                                }
+                              />
+                            </Field>
+                          </div>
+                        )}
+                        {corsIssue && !config.useProxy && (
+                          <MessageBar intent="warning">
+                            <MessageBarBody>
+                              {t("settings.corsWarning")}
+                            </MessageBarBody>
+                          </MessageBar>
+                        )}
+                        {result && (
+                          <MessageBar intent={result.ok ? "success" : "error"}>
+                            <MessageBarBody>{result.message}</MessageBarBody>
+                          </MessageBar>
+                        )}
+                        <Button
+                          size="small"
+                          onClick={() => void onTest(id)}
+                          disabled={testing === id}
+                        >
+                          {testing === id
+                            ? t("common.loading")
+                            : t("settings.testConnection")}
+                        </Button>
+                      </AccordionPanel>
+                    </AccordionItem>
+                  </Accordion>
+                );
+              })
+            )}
           </AccordionPanel>
         </AccordionItem>
       </Accordion>

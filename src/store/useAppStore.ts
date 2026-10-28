@@ -17,10 +17,11 @@ import {
   DEFAULT_MAX_TOKENS,
   DEFAULT_TEMPERATURE,
 } from "../config/reasoningProfiles";
-import { StorageService } from "../services/StorageService";
+import { StorageService, StorageLockedError } from "../services/StorageService";
 import { HistoryService } from "../services/HistoryService";
 import { STORAGE_KEYS } from "../constants";
 import { logger } from "../services/LoggerService";
+import { CryptoService } from "../services/CryptoService";
 
 interface PendingAction {
   id: string;
@@ -50,6 +51,8 @@ interface AppState {
   error: string | null;
   pendingAction: PendingAction | null;
   history: ChatHistory[];
+  secretsLocked: boolean;
+  passphraseEnabled: boolean;
 
   setOfficeInfo: (host: OfficeHost, platform: OfficePlatform) => void;
   setProviderConfigs: (configs: Record<ProviderId, ProviderConfig>) => void;
@@ -77,6 +80,9 @@ interface AppState {
   setHistory: (history: ChatHistory[]) => void;
   persist: () => Promise<void>;
   hydrate: () => Promise<void>;
+  createPassphrase: (passphrase: string) => Promise<void>;
+  unlockSecrets: (passphrase: string) => Promise<boolean>;
+  lockSecrets: () => void;
 }
 
 function createEmptyConfigs(): Record<ProviderId, ProviderConfig> {
@@ -113,6 +119,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   error: null,
   pendingAction: null,
   history: [],
+  secretsLocked: false,
+  passphraseEnabled: false,
 
   setOfficeInfo: (host, platform) => set({ host, platform, officeReady: true }),
 
@@ -168,11 +176,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   persist: async () => {
     const state = get();
-    await Promise.all([
-      StorageService.setItem(
-        STORAGE_KEYS.providerConfigs,
-        state.providerConfigs
-      ),
+    const writes: Promise<void>[] = [
       StorageService.setItem(STORAGE_KEYS.activeProvider, state.activeProvider),
       StorageService.setItem(STORAGE_KEYS.temperature, state.temperature),
       StorageService.setItem(STORAGE_KEYS.maxTokens, state.maxTokens),
@@ -180,7 +184,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       StorageService.setItem(STORAGE_KEYS.systemPrompt, state.systemPrompt),
       StorageService.setItem(STORAGE_KEYS.theme, state.theme),
       StorageService.setItem(STORAGE_KEYS.language, state.language),
-    ]);
+    ];
+    if (!state.secretsLocked) {
+      writes.push(
+        StorageService.setItem(
+          STORAGE_KEYS.providerConfigs,
+          state.providerConfigs
+        )
+      );
+    }
+    await Promise.all(writes);
     const activeModelMap =
       (await StorageService.getItem<Record<string, string>>(
         STORAGE_KEYS.activeModel
@@ -203,8 +216,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   hydrate: async () => {
+    let configs: Record<ProviderId, ProviderConfig> | null = null;
+    let secretsLocked = false;
+    try {
+      configs = await StorageService.getItem<
+        Record<ProviderId, ProviderConfig>
+      >(STORAGE_KEYS.providerConfigs);
+    } catch (error) {
+      if (error instanceof StorageLockedError) secretsLocked = true;
+      else throw error;
+    }
+    const passphraseEnabled = await CryptoService.hasPassphrase();
     const [
-      configs,
       activeProvider,
       temperature,
       maxTokens,
@@ -215,9 +238,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       modelMap,
       history,
     ] = await Promise.all([
-      StorageService.getItem<Record<ProviderId, ProviderConfig>>(
-        STORAGE_KEYS.providerConfigs
-      ),
       StorageService.getItem<ProviderId>(STORAGE_KEYS.activeProvider),
       StorageService.getItem<number>(STORAGE_KEYS.temperature),
       StorageService.getItem<number>(STORAGE_KEYS.maxTokens),
@@ -255,6 +275,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       theme: theme ?? "auto",
       language: language ?? "en",
       history,
+      secretsLocked,
+      passphraseEnabled,
+    });
+  },
+
+  createPassphrase: async (passphrase) => {
+    await CryptoService.createPassphrase(passphrase);
+    set({ secretsLocked: false, passphraseEnabled: true });
+    await get().persist();
+    await HistoryService.resealAll();
+    set({ history: await HistoryService.listChats() });
+  },
+
+  unlockSecrets: async (passphrase) => {
+    const ok = await CryptoService.unlock(passphrase);
+    if (!ok) return false;
+    set({ secretsLocked: false, passphraseEnabled: true });
+    await get().hydrate();
+    await HistoryService.resealAll();
+    set({ history: await HistoryService.listChats() });
+    return true;
+  },
+
+  lockSecrets: () => {
+    CryptoService.lock();
+    set({
+      secretsLocked: true,
+      passphraseEnabled: true,
+      providerConfigs: createEmptyConfigs(),
+      history: [],
+      messages: [],
+      currentChatId: null,
+      streamingContent: "",
     });
   },
 }));

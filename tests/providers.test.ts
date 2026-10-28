@@ -171,8 +171,10 @@ describe("OpenAIProvider", () => {
     const provider = new OpenAIProvider(config);
     await provider.chat(makeMessages(), makeOptions());
 
-    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://proxy.example.com/openai/chat/completions");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["X-OUAI-Upstream"]).toBe("https://api.openai.com/v1");
   });
 });
 

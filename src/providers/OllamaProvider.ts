@@ -84,7 +84,7 @@ export class OllamaProvider extends BaseProvider {
       const data = await httpRequest<{ models?: Array<{ name: string }> }>({
         url: this.buildUrl("/api/tags"),
         method: "GET",
-        headers: this.buildHeaders(),
+        headers: this.requestHeaders(),
         timeout: Math.min(this.config.timeout, 15000),
         provider: this.id,
       });

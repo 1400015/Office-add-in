@@ -79,7 +79,7 @@ export class OpenRouterProvider extends BaseProvider {
       }>({
         url: this.buildUrl("/models"),
         method: "GET",
-        headers: this.buildHeaders(),
+        headers: this.requestHeaders(),
         timeout: this.config.timeout,
         provider: this.id,
       });

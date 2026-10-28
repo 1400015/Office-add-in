@@ -80,4 +80,22 @@ describe("CryptoService", () => {
     expect(await CryptoService.decrypt(encrypted)).toBe("second");
     expect(map.get("ouai.cryptoSalt")).toBe(salt1);
   });
+
+  it("encrypts with the passphrase and refuses to decrypt while locked", async () => {
+    await CryptoService.createPassphrase("correct horse");
+    const encrypted = await CryptoService.encrypt("sk-real-secret");
+    expect(encrypted.startsWith("enc:v2:")).toBe(true);
+    expect(encrypted).not.toContain("sk-real-secret");
+    CryptoService.lock();
+    await expect(CryptoService.decrypt(encrypted)).rejects.toThrow(/locked/);
+    expect(await CryptoService.unlock("wrong-pass")).toBe(false);
+    expect(await CryptoService.unlock("correct horse")).toBe(true);
+    expect(await CryptoService.decrypt(encrypted)).toBe("sk-real-secret");
+  });
+
+  it("rejects a short passphrase", async () => {
+    await expect(CryptoService.createPassphrase("short")).rejects.toThrow(
+      /passphrase-short/
+    );
+  });
 });

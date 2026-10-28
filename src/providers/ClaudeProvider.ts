@@ -121,7 +121,7 @@ export class ClaudeProvider extends BaseProvider {
     try {
       const response = await fetch(this.buildUrl(this.chatPath()), {
         method: "POST",
-        headers: this.buildHeaders(),
+        headers: this.requestHeaders(),
         body: JSON.stringify(body),
         signal: combined,
       });
