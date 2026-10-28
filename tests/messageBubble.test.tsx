@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MessageBubble } from "../src/taskpane/components/MessageBubble";
@@ -79,7 +79,11 @@ describe("MessageBubble", () => {
 
   it("copies content to the clipboard on copy click", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
     render(
       <MessageBubble
         message={makeMessage("assistant", "copy me")}
