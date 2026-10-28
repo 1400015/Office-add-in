@@ -176,6 +176,51 @@ describe("OpenAIProvider", () => {
     const headers = init.headers as Record<string, string>;
     expect(headers["X-OUAI-Upstream"]).toBe("https://api.openai.com/v1");
   });
+
+  it("omits temperature and uses max_completion_tokens for reasoning models", async () => {
+    const fetchMock = mockFetchOnce({
+      choices: [{ message: { content: "ok" } }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config = {
+      ...createDefaultProviderConfig("openai"),
+      apiKey: "sk-test",
+    };
+    const provider = new OpenAIProvider(config);
+    await provider.chat(
+      makeMessages(),
+      makeOptions({ model: "o3-mini", maxTokens: 5000 })
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(body.temperature).toBeUndefined();
+    expect(body.max_completion_tokens).toBe(5000);
+    expect(body.max_tokens).toBeUndefined();
+  });
+
+  it("clamps the output budget to the model family limit", async () => {
+    const fetchMock = mockFetchOnce({
+      choices: [{ message: { content: "ok" } }],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config = {
+      ...createDefaultProviderConfig("openai"),
+      apiKey: "sk-test",
+    };
+    const provider = new OpenAIProvider(config);
+    await provider.chat(
+      makeMessages(),
+      makeOptions({ model: "gpt-4o", maxTokens: 500000 })
+    );
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(body.max_completion_tokens).toBe(32768);
+    expect(body.temperature).toBe(0.2);
+  });
 });
 
 describe("OllamaProvider", () => {

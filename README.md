@@ -116,21 +116,22 @@ Open the **Settings** tab inside the add-in:
 
 ## Troubleshooting
 
-| Problem | Cause / Fix |
-|---|---|
-| Add-in won't load / blank taskpane | Office requires HTTPS. Run `npm start` to install dev certificates, and trust the certificate in your OS keychain on first run. |
-| `npm run validate` reports manifest errors | The validator checks the full schema, including `VersionOverrides`. Fix `manifest.xml`; `npx office-addin-manifest info manifest.xml` shows the parsed manifest. |
-| OpenAI / Claude requests fail in the browser | CORS. Use the proxy option with a BFF endpoint (see Configuration) or a CORS-enabled endpoint. |
-| Ollama: "Cannot reach Ollama" | Make sure Ollama is running (`ollama serve`). If requests are blocked, set `OLLAMA_ORIGINS` to allow the taskpane origin. |
-| Ollama in Office on the web | Not supported — browsers block `http://localhost` from an HTTPS page. Use Office Desktop. |
-| Provider returns 429 | Rate limit. The add-in retries automatically (3 attempts, exponential backoff); wait a moment if it still fails. |
-| Request times out | Increase the timeout in **Settings** for that provider. |
-| Bundle/source maps | Production builds omit source maps by default; build with `SOURCEMAP=true npm run build` to emit them. |
+| Problem                                      | Cause / Fix                                                                                                                                                      |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Add-in won't load / blank taskpane           | Office requires HTTPS. Run `npm start` to install dev certificates, and trust the certificate in your OS keychain on first run.                                  |
+| `npm run validate` reports manifest errors   | The validator checks the full schema, including `VersionOverrides`. Fix `manifest.xml`; `npx office-addin-manifest info manifest.xml` shows the parsed manifest. |
+| OpenAI / Claude requests fail in the browser | CORS. Use the proxy option with a BFF endpoint (see Configuration) or a CORS-enabled endpoint.                                                                   |
+| Ollama: "Cannot reach Ollama"                | Make sure Ollama is running (`ollama serve`). If requests are blocked, set `OLLAMA_ORIGINS` to allow the taskpane origin.                                        |
+| Ollama in Office on the web                  | Not supported — browsers block `http://localhost` from an HTTPS page. Use Office Desktop.                                                                        |
+| Provider returns 429                         | Rate limit. The add-in retries automatically (3 attempts, exponential backoff); wait a moment if it still fails.                                                 |
+| Request times out                            | Increase the timeout in **Settings** for that provider.                                                                                                          |
+| Bundle/source maps                           | Production builds omit source maps by default; build with `SOURCEMAP=true npm run build` to emit them.                                                           |
 
 ## Architecture notes
 
 - **Ribbon**: the manifest declares a shared runtime (`Runtimes`), so the ribbon buttons and the taskpane run in the same JavaScript context. `src/commands/ribbon.ts` forwards the command through a custom event and opens the panel.
 - **Providers** implement a common contract (`BaseProvider`): `chat`, `chatStream`, `getModels`, `summarize`, `translate`, `analyse`. New providers only need a new class + one line in `ProviderFactory`.
+- **Request shaping**: `config/modelParams.ts` adapts the request body to each model family (temperature support, output-token field and limit), so reasoning models and strict families do not fail with 400 errors.
 - **Reasoning** is abstract: the selected level is translated into a system-prompt strategy per provider (`config/reasoningProfiles.ts`).
 - **Retry**: HTTP requests retry automatically on 429/5xx with exponential backoff (3 attempts).
 - **Logging**: structured in-memory log ring buffer (`services/LoggerService.ts`).

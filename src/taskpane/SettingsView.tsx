@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
 import { PROVIDER_DEFINITIONS, PROVIDER_ORDER } from "../config/providers";
 import { MAX_TOKENS_LIMIT } from "../config/reasoningProfiles";
+import { modelParams } from "../config/modelParams";
 import { isOllamaCompatible } from "../services/OfficeService";
 import { ModelService } from "../services/ModelService";
 import type { ProviderId, ThemeMode } from "../types";
@@ -32,6 +33,8 @@ export function SettingsView(): JSX.Element {
   const updateProviderConfig = useAppStore((s) => s.updateProviderConfig);
   const temperature = useAppStore((s) => s.temperature);
   const maxTokens = useAppStore((s) => s.maxTokens);
+  const activeProvider = useAppStore((s) => s.activeProvider);
+  const activeModel = useAppStore((s) => s.activeModel);
   const systemPrompt = useAppStore((s) => s.systemPrompt);
   const theme = useAppStore((s) => s.theme);
   const language = useAppStore((s) => s.language);
@@ -55,6 +58,11 @@ export function SettingsView(): JSX.Element {
   const [testResult, setTestResult] = useState<
     Record<string, { ok: boolean; message: string }>
   >({});
+
+  const maxTokensLimit = Math.min(
+    MAX_TOKENS_LIMIT,
+    modelParams(activeModel || "default", activeProvider).maxTokensLimit
+  );
 
   const onSave = async (): Promise<void> => {
     await persist();
@@ -139,12 +147,12 @@ export function SettingsView(): JSX.Element {
               <Field label={t("settings.maxTokens")}>
                 <Slider
                   min={256}
-                  max={MAX_TOKENS_LIMIT}
+                  max={maxTokensLimit}
                   step={256}
-                  value={maxTokens}
+                  value={Math.min(maxTokens, maxTokensLimit)}
                   onChange={(_, data) => setMaxTokens(data.value)}
                 />
-                <Text size={200}>{maxTokens}</Text>
+                <Text size={200}>{Math.min(maxTokens, maxTokensLimit)}</Text>
               </Field>
             </div>
             <div className="settings-field">

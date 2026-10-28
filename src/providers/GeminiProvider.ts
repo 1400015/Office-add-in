@@ -5,6 +5,7 @@ import type {
   ProviderConfig,
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
+import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { httpRequest, httpStream } from "../services/HttpService";
 import { logger } from "../services/LoggerService";
 
@@ -66,11 +67,17 @@ export class GeminiProvider extends BaseProvider {
     messages: NormalizedMessage[],
     options: ChatOptions
   ): Record<string, unknown> {
+    const params = modelParams(options.model, this.id);
     return {
       contents: this.geminiContents(messages),
       generationConfig: {
-        temperature: options.temperature,
-        maxOutputTokens: options.maxTokens,
+        ...(params.supportsTemperature
+          ? { temperature: options.temperature }
+          : {}),
+        maxOutputTokens: clampMaxTokens(
+          options.maxTokens,
+          params.maxTokensLimit
+        ),
       },
     };
   }

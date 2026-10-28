@@ -5,6 +5,7 @@ import type {
   ProviderConfig,
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
+import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { httpRequest } from "../services/HttpService";
 import { logger } from "../services/LoggerService";
 
@@ -48,11 +49,16 @@ export class OllamaProvider extends BaseProvider {
     messages: NormalizedMessage[],
     options: ChatOptions
   ): Record<string, unknown> {
+    const params = modelParams(options.model, this.id);
     return {
       model: options.model,
       messages,
-      temperature: options.temperature,
-      options: { num_predict: options.maxTokens },
+      ...(params.supportsTemperature
+        ? { temperature: options.temperature }
+        : {}),
+      options: {
+        num_predict: clampMaxTokens(options.maxTokens, params.maxTokensLimit),
+      },
       stream: false,
     };
   }

@@ -5,6 +5,7 @@ import type {
   ProviderConfig,
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
+import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
@@ -72,10 +73,13 @@ export class ClaudeProvider extends BaseProvider {
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.content,
       }));
+    const params = modelParams(options.model, this.id);
     return {
       model: options.model,
-      max_tokens: options.maxTokens,
-      temperature: options.temperature,
+      max_tokens: clampMaxTokens(options.maxTokens, params.maxTokensLimit),
+      ...(params.supportsTemperature
+        ? { temperature: options.temperature }
+        : {}),
       ...(system ? { system } : {}),
       messages: conversation,
     };

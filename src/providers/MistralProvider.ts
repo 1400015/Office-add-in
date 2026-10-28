@@ -5,6 +5,7 @@ import type {
   ProviderConfig,
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
+import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { httpRequest } from "../services/HttpService";
 
 interface MistralResponse {
@@ -44,11 +45,17 @@ export class MistralProvider extends BaseProvider {
     messages: NormalizedMessage[],
     options: ChatOptions
   ): Record<string, unknown> {
+    const params = modelParams(options.model, this.id);
     return {
       model: options.model,
       messages,
-      temperature: options.temperature,
-      max_tokens: options.maxTokens,
+      ...(params.supportsTemperature
+        ? { temperature: options.temperature }
+        : {}),
+      [params.maxTokensField]: clampMaxTokens(
+        options.maxTokens,
+        params.maxTokensLimit
+      ),
     };
   }
 
