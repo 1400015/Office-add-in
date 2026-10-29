@@ -104,4 +104,52 @@ describe("handleProxy", () => {
       "https://addin.example"
     );
   });
+
+  it("refuses all requests in production without ALLOWED_ORIGINS", async () => {
+    const response = await handleProxy(
+      new Request("https://proxy.example/chat/completions", {
+        method: "POST",
+        headers: { Origin: "https://localhost:3000" },
+      }),
+      { ENVIRONMENT: "production" }
+    );
+    expect(response.status).toBe(500);
+    expect(await response.text()).toContain("ALLOWED_ORIGINS");
+  });
+
+  it("accepts requests in production when ALLOWED_ORIGINS is set", async () => {
+    const response = await handleProxy(
+      new Request("https://proxy.example/chat/completions", {
+        method: "OPTIONS",
+        headers: { Origin: "https://addin.example" },
+      }),
+      { ENVIRONMENT: "production", ALLOWED_ORIGINS: "https://addin.example" }
+    );
+    expect(response.status).toBe(204);
+  });
+
+  it("refuses origin-less requests in production", async () => {
+    const response = await handleProxy(
+      new Request("https://proxy.example/chat/completions", {
+        method: "POST",
+      }),
+      {
+        ENVIRONMENT: "production",
+        ALLOWED_ORIGINS: "https://localhost:3000",
+      }
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it("still accepts origin-less requests outside production", async () => {
+    const fetchMock = vi.fn(async () => new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleProxy(
+      new Request("https://proxy.example/chat/completions", {
+        method: "POST",
+        headers: { "X-OUAI-Upstream": "https://api.openai.com/v1" },
+      })
+    );
+    expect(response.status).toBe(200);
+  });
 });
