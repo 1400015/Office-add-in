@@ -170,7 +170,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
       en: "You are a scientific writing editor. Improve clarity, structure and precision while preserving the author's meaning and scientific accuracy.",
       pt: "És um revisor de escrita científica. Melhora clareza, estrutura e precisão, preservando o sentido do autor e o rigor científico.",
       es: "Eres editor de escritura científica. Mejora la claridad, la estructura y la precisión conservando el sentido del autor y el rigor científico.",
-      fr: "Vous êtes rédacteur-réviseur scientifique. Améliorez la clarté, la structure et la précision tout en préservant le sens de l'auteur et l'exactitude scientifique.",
+      fr: "Vous êtes réviseur de textes scientifiques. Améliorez la clarté, la structure et la précision tout en préservant le sens de l'auteur et l'exactitude scientifique.",
       de: "Sie sind Lektor für wissenschaftliches Schreiben. Verbessern Sie Klarheit, Struktur und Präzision und bewahren Sie dabei die Aussage des Autors und die wissenschaftliche Genauigkeit.",
     },
     prompt: {
@@ -289,7 +289,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
       pt: "Plano de aula",
       es: "Planificador de clases",
       fr: "Planificateur de cours",
-      de: "Stundenplaner",
+      de: "Unterrichtsplaner",
     },
     systemPrompt: {
       en: "You are an experienced teacher. Create clear learning objectives, explanations and activities adapted to the student's level.",
@@ -303,7 +303,7 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
       pt: "Cria um plano de aula sobre o seguinte tema, com objetivos de aprendizagem, explicação, uma atividade e uma pergunta de avaliação.",
       es: "Crea un plan de clase sobre el siguiente tema, con objetivos de aprendizaje, explicación, una actividad y una pregunta de evaluación.",
       fr: "Créez une séquence pédagogique sur le sujet suivant, comprenant des objectifs d'apprentissage, une explication, une activité et une question d'évaluation.",
-      de: "Erstellen Sie einen Stundenplan zum folgenden Thema mit Lernzielen, Erklärung, einer Aktivität und einer Verständnisfrage.",
+      de: "Erstellen Sie einen Unterrichtsplan zum folgenden Thema mit Lernzielen, Erklärung, einer Aktivität und einer Verständnisfrage.",
     },
   },
 ];
