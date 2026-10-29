@@ -114,6 +114,18 @@ Open the **Settings** tab inside the add-in:
 
 > ⚠️ **Security note**: Without a passphrase, API keys are only obfuscated in `OfficeRuntime.storage`. Set a passphrase in Settings to encrypt keys and chat history with a key that stays in memory for the session (it is not stored). Secrets are masked in the UI and redacted from logs.
 
+## Internationalization (i18n)
+
+The UI is fully translated into **English, Portuguese, Spanish, French and German** with i18next and react-i18next.
+
+- **Bundles**: [`src/i18n/locales/`](src/i18n/locales/) holds `en.json`, `pt.json`, `es.json`, `fr.json` and `de.json`, each with the same key set (147 leaf keys). They are registered in [`src/i18n/index.ts`](src/i18n/index.ts) with `fallbackLng: "en"`. The chosen language is persisted in Settings and restored on start.
+- **Usage**: components call `t("section.key")`. Dynamic keys such as `` t(`languages.${code}`) `` must resolve to an existing section of the bundle.
+- **Plurals**: keys that vary with a count use the i18next `_one` / `_other` suffixes (e.g. `history.messageCount_one`) and are called with `t("history.messageCount", { count })`.
+- **Errors**: services return `errors.*` keys via [`src/services/ErrorService.ts`](src/services/ErrorService.ts) and the UI translates them at render time, so raw provider or Office.js messages are never shown as-is.
+- **Prompt templates**: [`src/taskpane/PromptTemplates.ts`](src/taskpane/PromptTemplates.ts) defines every field with all five languages — TypeScript rejects a template that misses one — and `templateText(value, language)` selects the right text (handles region tags like `pt-BR`, falls back to English).
+- **Adding a language**: create the locale file, register it in `src/i18n/index.ts`, add its code to `LANGUAGE_OPTIONS` in `src/taskpane/SettingsView.tsx` and to `TARGET_LANGUAGES` in `src/taskpane/components/QuickActions.tsx`, and add its name under `languages.*` in every bundle.
+- **Guardrails**: [`tests/i18n.test.ts`](tests/i18n.test.ts) runs in CI and enforces exact key parity with non-empty values per locale, that every `t()` key used in `src/` exists in the bundles, that values identical to English stay on an explicit allowlist, and that every prompt template field is filled in all five languages.
+
 ## Troubleshooting
 
 | Problem                                      | Cause / Fix                                                                                                                                                      |
