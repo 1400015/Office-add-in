@@ -38,11 +38,14 @@
   "settings": {
     "providers": "Fournisseurs",
     "apiKey": "Clé API",
+    "apiKeyOptional": "Clé API (facultative)",
     "endpoint": "Point de terminaison",
     "timeout": "Délai d'attente (ms)",
     "useProxy": "Passer par un proxy (recommandé pour OpenAI/Claude)",
     "proxyUrl": "URL du proxy",
     "testConnection": "Tester la connexion",
+    "connectionOk_one": "OK ({{count}} modèle)",
+    "connectionOk_other": "OK ({{count}} modèles)",
     "save": "Enregistrer",
     "saved": "Paramètres enregistrés",
     "keySecurityWarning": "Sans phrase secrète, les clés ne sont que dissimulées sur cet ordinateur. Définissez une phrase secrète pour chiffrer les clés et l'historique. La phrase n'est pas enregistrée ; vous devrez la saisir à nouveau après un rechargement.",
@@ -130,6 +133,8 @@
   "history": {
     "title": "Historique",
     "empty": "Aucune conversation pour le moment",
+    "messageCount_one": "{{count}} message",
+    "messageCount_other": "{{count}} messages",
     "delete": "Supprimer",
     "clearAll": "Tout effacer",
     "clearConfirmTitle": "Supprimer toutes les conversations ?",

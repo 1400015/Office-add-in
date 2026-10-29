@@ -77,7 +77,10 @@ export function SettingsView(): JSX.Element {
       const models = await ModelService.listModels(providerConfigs[id], true);
       setTestResult((prev) => ({
         ...prev,
-        [id]: { ok: true, message: `OK (${models.length} models)` },
+        [id]: {
+          ok: true,
+          message: t("settings.connectionOk", { count: models.length }),
+        },
       }));
     } catch (error) {
       setTestResult((prev) => ({
@@ -283,7 +286,13 @@ export function SettingsView(): JSX.Element {
                       <AccordionHeader>{def.name}</AccordionHeader>
                       <AccordionPanel>
                         <div className="settings-field">
-                          <Field label={def.apiKeyLabel}>
+                          <Field
+                            label={
+                              def.id === "ollama"
+                                ? t("settings.apiKeyOptional")
+                                : t("settings.apiKey")
+                            }
+                          >
                             <Input
                               type="password"
                               value={config.apiKey}

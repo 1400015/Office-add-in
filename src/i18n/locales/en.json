@@ -38,11 +38,14 @@
   "settings": {
     "providers": "Providers",
     "apiKey": "API Key",
+    "apiKeyOptional": "API Key (optional)",
     "endpoint": "Endpoint",
     "timeout": "Timeout (ms)",
     "useProxy": "Route through proxy (recommended for OpenAI/Claude)",
     "proxyUrl": "Proxy URL",
     "testConnection": "Test connection",
+    "connectionOk_one": "OK ({{count}} model)",
+    "connectionOk_other": "OK ({{count}} models)",
     "save": "Save",
     "saved": "Settings saved",
     "keySecurityWarning": "Without a passphrase, keys are only obfuscated on this computer. Set a passphrase to encrypt keys and chat history. The passphrase is not stored; you must enter it again after a reload.",
@@ -130,6 +133,8 @@
   "history": {
     "title": "History",
     "empty": "No conversations yet",
+    "messageCount_one": "{{count}} msg",
+    "messageCount_other": "{{count}} msgs",
     "delete": "Delete",
     "clearAll": "Clear all",
     "clearConfirmTitle": "Delete all conversations?",

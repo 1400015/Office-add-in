@@ -51,7 +51,7 @@ export function QuickActions(): JSX.Element {
   const [instructionKind, setInstructionKind] =
     useState<InstructionKind>("word-generate");
   const [targetLang, setTargetLang] = useState(
-    i18n.language.toLowerCase().startsWith("pt") ? "en" : "pt"
+    i18n.language.toLowerCase().startsWith("en") ? "pt" : "en"
   );
 
   const actions: ActionDef[] = (() => {

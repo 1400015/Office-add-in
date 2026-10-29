@@ -38,11 +38,14 @@
   "settings": {
     "providers": "Anbieter",
     "apiKey": "API-Schlüssel",
+    "apiKeyOptional": "API-Schlüssel (optional)",
     "endpoint": "Endpunkt",
     "timeout": "Zeitlimit (ms)",
     "useProxy": "Über Proxy leiten (empfohlen für OpenAI/Claude)",
     "proxyUrl": "Proxy-URL",
     "testConnection": "Verbindung testen",
+    "connectionOk_one": "OK ({{count}} Modell)",
+    "connectionOk_other": "OK ({{count}} Modelle)",
     "save": "Speichern",
     "saved": "Einstellungen gespeichert",
     "keySecurityWarning": "Ohne Passphrase werden Schlüssel auf diesem Computer nur verschleiert. Legen Sie eine Passphrase fest, um Schlüssel und Verlauf zu verschlüsseln. Die Passphrase wird nicht gespeichert; nach dem Neuladen müssen Sie sie erneut eingeben.",
@@ -130,6 +133,8 @@
   "history": {
     "title": "Verlauf",
     "empty": "Noch keine Unterhaltungen",
+    "messageCount_one": "{{count}} Nachricht",
+    "messageCount_other": "{{count}} Nachrichten",
     "delete": "Löschen",
     "clearAll": "Alles löschen",
     "clearConfirmTitle": "Alle Unterhaltungen löschen?",

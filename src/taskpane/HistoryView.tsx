@@ -87,7 +87,7 @@ export function HistoryView(): JSX.Element {
             <Text size={200}>
               {new Date(chat.timestamp).toLocaleString()} ·{" "}
               {PROVIDER_DEFINITIONS[chat.provider].name} · {chat.model} ·{" "}
-              {chat.messages.length} msgs
+              {t("history.messageCount", { count: chat.messages.length })}
             </Text>
           </div>
           <Button

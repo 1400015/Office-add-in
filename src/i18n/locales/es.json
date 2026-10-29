@@ -38,11 +38,14 @@
   "settings": {
     "providers": "Proveedores",
     "apiKey": "Clave de API",
+    "apiKeyOptional": "Clave de API (opcional)",
     "endpoint": "Endpoint",
     "timeout": "Tiempo de espera (ms)",
     "useProxy": "Usar proxy (recomendado para OpenAI/Claude)",
     "proxyUrl": "URL del proxy",
     "testConnection": "Probar conexión",
+    "connectionOk_one": "OK ({{count}} modelo)",
+    "connectionOk_other": "OK ({{count}} modelos)",
     "save": "Guardar",
     "saved": "Configuración guardada",
     "keySecurityWarning": "Sin una frase de contraseña, las claves solo se ofuscan en este equipo. Define una frase para cifrar las claves y el historial. La frase no se guarda; tendrás que introducirla de nuevo al recargar.",
@@ -130,6 +133,8 @@
   "history": {
     "title": "Historial",
     "empty": "Aún no hay conversaciones",
+    "messageCount_one": "{{count}} mensaje",
+    "messageCount_other": "{{count}} mensajes",
     "delete": "Eliminar",
     "clearAll": "Borrar todo",
     "clearConfirmTitle": "¿Eliminar todas las conversaciones?",

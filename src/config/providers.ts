@@ -6,7 +6,6 @@ export interface ProviderDefinition {
   defaultEndpoint: string;
   defaultTimeout: number;
   defaultModels: string[];
-  apiKeyLabel: string;
   supportsModelListing: boolean;
   supportsStreaming: boolean;
   corsSafe: boolean;
@@ -25,7 +24,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
       "mistral-large-2512",
       "codestral-latest",
     ],
-    apiKeyLabel: "Mistral API Key",
     supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: true,
@@ -43,7 +41,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
       "gpt-5.6",
       "gpt-5.5",
     ],
-    apiKeyLabel: "OpenAI API Key",
     supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: false,
@@ -55,7 +52,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
     defaultEndpoint: "https://api.anthropic.com/v1",
     defaultTimeout: 120000,
     defaultModels: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"],
-    apiKeyLabel: "Anthropic API Key",
     supportsModelListing: false,
     supportsStreaming: true,
     corsSafe: false,
@@ -72,7 +68,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
       "gemini-3.6-flash",
       "gemini-3.5-flash-lite",
     ],
-    apiKeyLabel: "Google AI API Key",
     supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: true,
@@ -88,7 +83,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
       "deepseek/deepseek-v4.1-flash-1017",
       "z-ai/glm-5.3-flash",
     ],
-    apiKeyLabel: "OpenRouter API Key",
     supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: true,
@@ -100,7 +94,6 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
     defaultEndpoint: "http://localhost:11434",
     defaultTimeout: 300000,
     defaultModels: ["llama3.2", "mistral", "qwen2.5"],
-    apiKeyLabel: "API Key (optional)",
     supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: true,
