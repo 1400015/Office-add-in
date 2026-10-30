@@ -19,6 +19,11 @@ export function contentLanguageName(code: string): string {
   }
 }
 
+/** Ribbon and quick-action translate have no language picker, so the target is the other of English and Portuguese. */
+export function defaultTranslateLanguageCode(uiLanguage: string): "en" | "pt" {
+  return uiLanguage.toLowerCase().startsWith("en") ? "pt" : "en";
+}
+
 export function clampSlideCount(value: number): number {
   if (!Number.isFinite(value)) return 5;
   return Math.min(15, Math.max(1, Math.round(value)));

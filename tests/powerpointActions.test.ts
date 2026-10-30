@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clampSlideCount,
   contentLanguageName,
+  defaultTranslateLanguageCode,
   parseAlignedStrings,
   parseSlidePlans,
 } from "../src/powerpoint/slidePlan";
@@ -138,6 +139,9 @@ describe("slide plan parsing", () => {
   it("names the UI language", () => {
     expect(contentLanguageName("pt-PT")).toBe("Portuguese");
     expect(contentLanguageName("en")).toBe("English");
+    expect(defaultTranslateLanguageCode("pt")).toBe("en");
+    expect(defaultTranslateLanguageCode("en-US")).toBe("pt");
+    expect(defaultTranslateLanguageCode("de")).toBe("en");
   });
 
   it("clamps the slide count", () => {

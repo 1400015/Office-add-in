@@ -23,6 +23,7 @@ import * as powerpointActions from "../../powerpoint/powerpointActions";
 import {
   clampSlideCount,
   contentLanguageName,
+  defaultTranslateLanguageCode,
 } from "../../powerpoint/slidePlan";
 
 type PromptFn = (text: string) => Promise<string>;
@@ -51,7 +52,7 @@ export function QuickActions(): JSX.Element {
   const [instructionKind, setInstructionKind] =
     useState<InstructionKind>("word-generate");
   const [targetLang, setTargetLang] = useState(
-    i18n.language.toLowerCase().startsWith("en") ? "pt" : "en"
+    defaultTranslateLanguageCode(i18n.language)
   );
 
   const actions: ActionDef[] = (() => {

@@ -98,4 +98,40 @@ describe("locked vault", () => {
     );
     expect(map.get(STORAGE_KEYS.providerConfigs)).toBe(SEALED);
   });
+
+  it("does not overwrite sealed keys if a save runs while unlocking", async () => {
+    const { map, storage } = createMockStorage();
+    vi.stubGlobal("OfficeRuntime", { storage });
+    const store = useAppStore.getState();
+    await store.createPassphrase("correct-horse");
+    useAppStore
+      .getState()
+      .updateProviderConfig("mistral", { apiKey: "sk-keep" });
+    await useAppStore.getState().persist();
+    useAppStore.getState().lockSecrets();
+
+    let armed = true;
+    storage.getItem.mockImplementation(async (key: string) => {
+      if (armed && key === STORAGE_KEYS.providerConfigs) {
+        armed = false;
+        await useAppStore.getState().persist();
+      }
+      return map.get(key);
+    });
+
+    const ok = await useAppStore.getState().unlockSecrets("correct-horse");
+    expect(ok).toBe(true);
+    expect(useAppStore.getState().secretsLocked).toBe(false);
+    expect(useAppStore.getState().providerConfigs.mistral.apiKey).toBe(
+      "sk-keep"
+    );
+
+    const { CryptoService } = await import("../src/services/CryptoService");
+    const stored = map.get(STORAGE_KEYS.providerConfigs) ?? "";
+    const parsed = JSON.parse(await CryptoService.decrypt(stored)) as {
+      mistral: { apiKey: string };
+    };
+    expect(parsed.mistral.apiKey).toBe("sk-keep");
+    CryptoService.lock();
+  });
 });

@@ -309,7 +309,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   unlockSecrets: async (passphrase) => {
     const ok = await CryptoService.unlock(passphrase);
     if (!ok) return false;
-    set({ secretsLocked: false, passphraseEnabled: true });
+    // Stay locked in the store until hydrate has replaced the empty in-memory
+    // configs. Flipping the flag first would let a save overwrite the sealed keys.
     await get().hydrate();
     await HistoryService.resealAll();
     set({ history: await HistoryService.listChats() });

@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { useChat } from "./useChat";
-import { contentLanguageName } from "../powerpoint/slidePlan";
+import {
+  contentLanguageName,
+  defaultTranslateLanguageCode,
+} from "../powerpoint/slidePlan";
 import * as wordActions from "../word/wordActions";
 import * as excelActions from "../excel/excelActions";
 import * as powerpointActions from "../powerpoint/powerpointActions";
@@ -49,7 +52,9 @@ export function useRibbonCommands(): void {
 
     const run = (command: string): void => {
       window.__ouaiCommand = undefined;
-      const target = contentLanguageName(language || "en");
+      const target = contentLanguageName(
+        defaultTranslateLanguageCode(language || "en")
+      );
       const action = actionFor(command, host, target);
       if (!action) return;
       void runQuickAction(action, command);
