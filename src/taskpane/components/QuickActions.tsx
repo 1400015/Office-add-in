@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useState } from "react";
 import { Button, Spinner } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";

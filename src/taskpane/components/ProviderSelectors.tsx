@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Dropdown, Option, Tooltip } from "@fluentui/react-components";
 import { ArrowSync20Regular } from "@fluentui/react-icons";

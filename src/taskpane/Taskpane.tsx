@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { Suspense, lazy, useEffect } from "react";
 import { Tab, TabList, Button, Spinner } from "@fluentui/react-components";
 import {
