@@ -34,7 +34,21 @@ interface ActionDef {
   run: (prompt: PromptFn) => Promise<string>;
 }
 
-const TARGET_LANGUAGES = ["pt", "en", "es", "fr", "de"] as const;
+/** Codes offered by the translate dialog, in UI order. */
+export const TARGET_LANGUAGES = ["pt", "en", "es", "fr", "de"] as const;
+
+/** Codes offered by the translate dialog, in UI order. */
+export type TargetLanguage = (typeof TARGET_LANGUAGES)[number];
+
+/** Fluent UI dropdowns report the option as a possibly-undefined string. */
+export function isTargetLanguage(
+  value: string | undefined
+): value is TargetLanguage {
+  return (
+    typeof value === "string" &&
+    (TARGET_LANGUAGES as readonly string[]).includes(value)
+  );
+}
 
 type DialogKind = "create" | "translate" | "instruction" | null;
 type InstructionKind =
@@ -51,7 +65,7 @@ export function QuickActions(): JSX.Element {
   const [instruction, setInstruction] = useState("");
   const [instructionKind, setInstructionKind] =
     useState<InstructionKind>("word-generate");
-  const [targetLang, setTargetLang] = useState(
+  const [targetLang, setTargetLang] = useState<TargetLanguage>(
     defaultTranslateLanguageCode(i18n.language)
   );
 
@@ -357,7 +371,9 @@ export function QuickActions(): JSX.Element {
                   value={t(`languages.${targetLang}`)}
                   selectedOptions={[targetLang]}
                   onOptionSelect={(_, data) => {
-                    if (data.optionValue) setTargetLang(data.optionValue);
+                    if (isTargetLanguage(data.optionValue)) {
+                      setTargetLang(data.optionValue);
+                    }
                   }}
                 >
                   {TARGET_LANGUAGES.map((code) => (
