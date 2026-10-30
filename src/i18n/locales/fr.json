@@ -171,7 +171,10 @@
     "noSlideText": "La diapositive active ne contient aucun texte.",
     "noSlides": "La présentation ne contient aucune diapositive.",
     "topicRequired": "Un sujet est requis.",
-    "badAiFormat": "Le modèle n'a pas renvoyé le format attendu. Réessayez."
+    "badAiFormat": "Le modèle n'a pas renvoyé le format attendu. Réessayez.",
+    "proxyConfig": "Le proxy n'est pas configuré. Définissez ALLOWED_ORIGINS sur le worker avant de le déployer en production.",
+    "proxyOrigin": "Le proxy a rejeté l'origine de ce complément. Ajoutez l'origine du complément à ALLOWED_ORIGINS sur le worker.",
+    "proxyUpstream": "Le proxy ne relaie pas vers ce fournisseur. Vérifiez le point de terminaison dans Paramètres ; seuls les fournisseurs de la liste sont acceptés."
   },
   "common": {
     "loading": "Chargement...",

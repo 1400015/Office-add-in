@@ -32,3 +32,8 @@ jobs:
       - run: npm run validate
       - run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('manifest.xml'); print('manifest.xml OK')"
       - run: npx office-addin-manifest info manifest.xml
+
+      # The proxy deploys from its own entry point (wrangler.toml), which the
+      # app build never touches. Keep it bundling on every push.
+      - name: Bundle the proxy worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir dist-proxy

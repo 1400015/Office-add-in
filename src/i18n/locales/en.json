@@ -171,7 +171,10 @@
     "noSlideText": "The active slide has no text.",
     "noSlides": "The presentation has no slides.",
     "topicRequired": "A topic is required.",
-    "badAiFormat": "The model did not return the expected format. Try again."
+    "badAiFormat": "The model did not return the expected format. Try again.",
+    "proxyConfig": "The proxy is not configured. Set ALLOWED_ORIGINS on the worker before deploying it to production.",
+    "proxyOrigin": "The proxy rejected this add-in's origin. Add the add-in origin to ALLOWED_ORIGINS on the worker.",
+    "proxyUpstream": "The proxy does not forward to this provider. Check the endpoint in Settings; only allowlisted providers can be proxied."
   },
   "common": {
     "loading": "Loading...",

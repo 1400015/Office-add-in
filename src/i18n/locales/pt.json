@@ -171,7 +171,10 @@
     "noSlideText": "O diapositivo ativo não tem texto.",
     "noSlides": "A apresentação não tem diapositivos.",
     "topicRequired": "É preciso um tema.",
-    "badAiFormat": "O modelo não devolveu o formato esperado. Tenta outra vez."
+    "badAiFormat": "O modelo não devolveu o formato esperado. Tenta outra vez.",
+    "proxyConfig": "O proxy não está configurado. Define ALLOWED_ORIGINS no worker antes de o publicar em produção.",
+    "proxyOrigin": "O proxy rejeitou a origem deste complemento. Acrescenta a origem do complemento a ALLOWED_ORIGINS no worker.",
+    "proxyUpstream": "O proxy não encaminha para este fornecedor. Verifica o ponto de extremidade nas Definições; só fornecedores na lista são aceites."
   },
   "common": {
     "loading": "A carregar...",

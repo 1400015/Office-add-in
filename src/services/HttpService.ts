@@ -1,4 +1,5 @@
 import { RETRY_ATTEMPTS, RETRY_BASE_DELAY_MS } from "../constants";
+import { proxyFailure } from "../proxy/failures";
 import { ProviderError, type ProviderId } from "../types";
 import { logger } from "./LoggerService";
 
@@ -19,6 +20,17 @@ function sleep(ms: number): Promise<void> {
 function isRetryable(status?: number): boolean {
   if (status === undefined) return true;
   return status === 429 || status >= 500;
+}
+
+/**
+ * Whether another attempt could change the outcome. The proxy's own failures
+ * are deterministic (missing configuration, rejected origin, rejected
+ * upstream), so they surface immediately instead of after the full backoff.
+ */
+export function isRetryableError(error: unknown): boolean {
+  if (error instanceof Error && proxyFailure(error.message)) return false;
+  const status = error instanceof ProviderError ? error.status : undefined;
+  return isRetryable(status);
 }
 
 /**
@@ -74,7 +86,7 @@ export async function httpRequest<T>(req: HttpRequest): Promise<T> {
       if (req.signal?.aborted) break;
 
       const status = error instanceof ProviderError ? error.status : undefined;
-      const retryable = isRetryable(status);
+      const retryable = isRetryableError(error);
 
       if (attempt < RETRY_ATTEMPTS && retryable) {
         const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);

@@ -171,7 +171,10 @@
     "noSlideText": "Die aktive Folie enthält keinen Text.",
     "noSlides": "Die Präsentation enthält keine Folien.",
     "topicRequired": "Ein Thema ist erforderlich.",
-    "badAiFormat": "Das Modell hat nicht das erwartete Format zurückgegeben. Versuchen Sie es erneut."
+    "badAiFormat": "Das Modell hat nicht das erwartete Format zurückgegeben. Versuchen Sie es erneut.",
+    "proxyConfig": "Der Proxy ist nicht konfiguriert. Legen Sie ALLOWED_ORIGINS auf dem Worker fest, bevor Sie ihn in die Produktion nehmen.",
+    "proxyOrigin": "Der Proxy hat den Ursprung dieser Erweiterung abgelehnt. Tragen Sie den Ursprung der Erweiterung in ALLOWED_ORIGINS beim Worker ein.",
+    "proxyUpstream": "Der Proxy leitet nicht an diesen Anbieter weiter. Prüfen Sie den Endpunkt in den Einstellungen; nur Anbieter auf der Liste werden zugelassen."
   },
   "common": {
     "loading": "Wird geladen ...",

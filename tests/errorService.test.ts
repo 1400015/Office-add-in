@@ -66,6 +66,29 @@ describe("friendlyError", () => {
     ).toBe("errors.badAiFormat");
   });
 
+  it("explains the proxy's own failures instead of a generic message", () => {
+    expect(
+      friendlyError(
+        new Error(
+          "Request failed with status 500: Proxy misconfiguration: ALLOWED_ORIGINS must be configured in production"
+        ),
+        { provider: "mistral" }
+      )
+    ).toBe("errors.proxyConfig");
+    expect(
+      friendlyError(
+        new Error("Request failed with status 403: Origin not allowed"),
+        { provider: "openai" }
+      )
+    ).toBe("errors.proxyOrigin");
+    expect(
+      friendlyError(
+        new Error("Request failed with status 400: Upstream not allowed"),
+        { provider: "openai" }
+      )
+    ).toBe("errors.proxyUpstream");
+  });
+
   it("falls back to generic", () => {
     expect(friendlyError(new Error("some unexpected thing"))).toBe(
       "errors.generic"

@@ -1,3 +1,5 @@
+import { PROXY_FAILURE_MESSAGES } from "./failures";
+
 const ALLOWED_HOSTS = new Set([
   "api.openai.com",
   "api.anthropic.com",
@@ -96,18 +98,15 @@ export async function handleProxy(
   env?: ProxyEnv
 ): Promise<Response> {
   if (isProduction(env) && !hasConfiguredOrigins(env)) {
-    return new Response(
-      "Proxy misconfiguration: ALLOWED_ORIGINS must be configured in production",
-      {
-        status: 500,
-        headers: corsHeaders(null),
-      }
-    );
+    return new Response(PROXY_FAILURE_MESSAGES.config, {
+      status: 500,
+      headers: corsHeaders(null),
+    });
   }
 
   const origin = request.headers.get("Origin");
   if (!isOriginAllowed(origin, env)) {
-    return new Response("Origin not allowed", {
+    return new Response(PROXY_FAILURE_MESSAGES.origin, {
       status: 403,
       headers: corsHeaders(null),
     });
@@ -129,7 +128,7 @@ export async function handleProxy(
     `${incoming.pathname}${incoming.search}`
   );
   if (!target) {
-    return new Response("Upstream not allowed", {
+    return new Response(PROXY_FAILURE_MESSAGES.upstream, {
       status: 400,
       headers: corsHeaders(origin),
     });

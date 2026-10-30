@@ -1,13 +1,24 @@
+import { proxyFailure, type ProxyFailureKind } from "../proxy/failures";
+
 export type FriendlyErrorKind =
   | "noApiKey"
   | "noModel"
   | "errors.ollamaOffline"
   | "errors.ollamaWebBlocked"
+  | "errors.proxyConfig"
+  | "errors.proxyOrigin"
+  | "errors.proxyUpstream"
   | "errors.network"
   | "errors.timeout"
   | "errors.rateLimited"
   | "errors.auth"
   | "errors.generic";
+
+const PROXY_ERROR_KEYS: Record<ProxyFailureKind, FriendlyErrorKind> = {
+  config: "errors.proxyConfig",
+  origin: "errors.proxyOrigin",
+  upstream: "errors.proxyUpstream",
+};
 
 function isOllamaEndpoint(message: string): boolean {
   return message.includes("11434") || /ollama/i.test(message);
@@ -47,6 +58,11 @@ export function friendlyError(
   ) {
     return "errors.badAiFormat";
   }
+
+  // The proxy answers with stable strings of its own, so its failures can be
+  // explained instead of collapsing into a generic message.
+  const proxyKind = proxyFailure(message);
+  if (proxyKind) return PROXY_ERROR_KEYS[proxyKind];
 
   const provider = context?.provider;
   const isOllama = provider === "ollama" || isOllamaEndpoint(message);
