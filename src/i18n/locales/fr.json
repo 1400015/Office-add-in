@@ -4,7 +4,7 @@
     "chat": "Chat",
     "settings": "Paramètres",
     "history": "Historique",
-    "templates": "Modèles"
+    "templates": "Gabarits"
   },
   "chat": {
     "placeholder": "Écrivez ici...",
@@ -19,7 +19,7 @@
     "insertIntoCell": "Insérer dans la cellule",
     "copy": "Copier",
     "copied": "Copié !",
-    "regenerate": "Régénérer",
+    "regenerate": "Générer à nouveau",
     "contextAttached": "Utilisation de {{type}} comme contexte",
     "contextTypes": {
       "none": "Aucun contexte",
@@ -127,7 +127,7 @@
       "legal": "Juridique",
       "education": "Éducation"
     },
-    "use": "Utiliser le modèle",
+    "use": "Utiliser le gabarit",
     "sent": "Envoyé"
   },
   "history": {
@@ -157,7 +157,7 @@
     "uiCrash": "Le complément a rencontré une erreur inattendue. Rechargez pour continuer.",
     "generic": "Une erreur est survenue. Veuillez réessayer.",
     "officeNotReady": "Office n'est pas encore prêt.",
-    "ollamaOffline": "Impossible de joindre Ollama. Vérifiez qu'il est démarré : exécutez 'ollama serve' dans un terminal. Si l'erreur persiste, définissez OLLAMA_ORIGINS pour autoriser l'origine de ce complément.",
+    "ollamaOffline": "Impossible d'atteindre Ollama. Vérifiez qu'il est démarré : exécutez 'ollama serve' dans un terminal. Si l'erreur persiste, définissez OLLAMA_ORIGINS pour autoriser l'origine de ce complément.",
     "ollamaWebBlocked": "Ollama ne fonctionne que dans Office Desktop. Dans Office sur le web, la sécurité du navigateur bloque les connexions à localhost.",
     "network": "Erreur réseau. Vérifiez votre connexion internet et réessayez.",
     "timeout": "La requête a expiré. Réessayez ou augmentez le délai d'attente dans les paramètres.",

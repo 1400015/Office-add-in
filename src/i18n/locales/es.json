@@ -19,7 +19,7 @@
     "insertIntoCell": "Insertar en la celda",
     "copy": "Copiar",
     "copied": "¡Copiado!",
-    "regenerate": "Regenerar",
+    "regenerate": "Generar de nuevo",
     "contextAttached": "Usando {{type}} como contexto",
     "contextTypes": {
       "none": "Sin contexto",
@@ -39,7 +39,7 @@
     "providers": "Proveedores",
     "apiKey": "Clave de API",
     "apiKeyOptional": "Clave de API (opcional)",
-    "endpoint": "Endpoint",
+    "endpoint": "Punto de terminación",
     "timeout": "Tiempo de espera (ms)",
     "useProxy": "Usar proxy (recomendado para OpenAI/Claude)",
     "proxyUrl": "URL del proxy",
@@ -71,7 +71,7 @@
     },
     "language": "Idioma",
     "ollamaWarning": "Ollama se ejecuta en localhost y solo funciona en Office Desktop. En Office para la web, la seguridad del navegador bloquea las conexiones locales.",
-    "corsWarning": "La API de este proveedor no permite llamadas directas desde el navegador (sin CORS). Activa la opción de proxy o usa un endpoint BFF."
+    "corsWarning": "La API de este proveedor no permite llamadas directas desde el navegador (sin CORS). Activa la opción de proxy o usa un punto de terminación BFF."
   },
   "quickActions": {
     "word": {

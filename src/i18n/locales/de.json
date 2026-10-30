@@ -62,7 +62,7 @@
     "temperature": "Temperatur",
     "maxTokens": "Max. Tokens",
     "systemPrompt": "System-Prompt",
-    "systemPromptPlaceholder": "z. B. Antworten Sie als Facharzt.",
+    "systemPromptPlaceholder": "z. B.: Antworten Sie als Facharzt.",
     "theme": "Design",
     "themes": {
       "light": "Hell",

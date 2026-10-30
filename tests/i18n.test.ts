@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "../src/i18n/locales/en.json";
 import pt from "../src/i18n/locales/pt.json";
 import es from "../src/i18n/locales/es.json";
@@ -12,6 +12,7 @@ import {
   templateText,
   type Localized,
 } from "../src/taskpane/PromptTemplates";
+import { detectLanguage } from "../src/i18n";
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
@@ -118,13 +119,8 @@ describe("translations", () => {
 
   it("keeps values identical to English on an explicit allowlist", () => {
     const allowlist: Record<string, string[]> = {
-      pt: ["app.chat", "settings.endpoint", "templates.categories.marketing"],
-      es: [
-        "app.chat",
-        "settings.endpoint",
-        "settings.general",
-        "templates.categories.marketing",
-      ],
+      pt: ["app.chat", "templates.categories.marketing"],
+      es: ["app.chat", "settings.general", "templates.categories.marketing"],
       fr: ["app.chat", "chat.contextTypes.document", "templates.categories.marketing"],
       de: ["app.chat", "settings.unlockPassphrase", "templates.categories.marketing"],
     };
@@ -165,5 +161,30 @@ describe("prompt templates", () => {
     expect(templateText(value, "de-AT")).toBe("de");
     expect(templateText(value, "en")).toBe("en");
     expect(templateText(value, "ja")).toBe("en");
+  });
+});
+
+describe("language detection", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("uses the browser language when it is supported", () => {
+    vi.stubGlobal("navigator", { language: "pt-PT" });
+    expect(detectLanguage()).toBe("pt");
+    vi.stubGlobal("navigator", { language: "es-419" });
+    expect(detectLanguage()).toBe("es");
+    vi.stubGlobal("navigator", { language: "de-AT" });
+    expect(detectLanguage()).toBe("de");
+  });
+
+  it("falls back to English for unsupported languages", () => {
+    vi.stubGlobal("navigator", { language: "zh-CN" });
+    expect(detectLanguage()).toBe("en");
+  });
+
+  it("falls back to English when there is no navigator", () => {
+    vi.stubGlobal("navigator", undefined);
+    expect(detectLanguage()).toBe("en");
   });
 });

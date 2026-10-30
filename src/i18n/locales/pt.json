@@ -4,7 +4,7 @@
     "chat": "Chat",
     "settings": "Definições",
     "history": "Histórico",
-    "templates": "Modelos"
+    "templates": "Predefinições"
   },
   "chat": {
     "placeholder": "Escreve aqui...",
@@ -39,7 +39,7 @@
     "providers": "Fornecedores",
     "apiKey": "Chave de API",
     "apiKeyOptional": "Chave de API (opcional)",
-    "endpoint": "Endpoint",
+    "endpoint": "Ponto de extremidade",
     "timeout": "Tempo limite (ms)",
     "useProxy": "Usar proxy (recomendado para OpenAI/Claude)",
     "proxyUrl": "URL do proxy",
@@ -71,7 +71,7 @@
     },
     "language": "Idioma",
     "ollamaWarning": "O Ollama corre em localhost e só funciona no Office Desktop. No Office web, a segurança do browser bloqueia ligações locais.",
-    "corsWarning": "A API deste fornecedor não permite chamadas diretas do browser (sem CORS). Ativa a opção de proxy ou usa um endpoint BFF."
+    "corsWarning": "A API deste fornecedor não permite chamadas diretas do browser (sem CORS). Ativa a opção de proxy ou usa um ponto de extremidade BFF."
   },
   "quickActions": {
     "word": {
@@ -127,7 +127,7 @@
       "legal": "Jurídico",
       "education": "Educação"
     },
-    "use": "Usar modelo",
+    "use": "Usar predefinição",
     "sent": "Enviado"
   },
   "history": {
@@ -159,7 +159,7 @@
     "ollamaOffline": "Não foi possível ligar ao Ollama. Verifica que está a correr: executa 'ollama serve' num terminal. Se o erro persistir, define OLLAMA_ORIGINS para permitir a origem deste add-in.",
     "ollamaWebBlocked": "O Ollama só funciona no Office Desktop. No Office web, a segurança do browser bloqueia ligações a localhost.",
     "network": "Erro de rede. Verifica a tua ligação à internet e tenta novamente.",
-    "timeout": "O pedido excedeu o tempo limite. Tenta novamente ou aumenta o timeout nas Definições.",
+    "timeout": "O pedido excedeu o tempo limite. Tenta novamente ou aumenta o tempo limite nas Definições.",
     "rateLimited": "Limite de pedidos atingido. Aguarda um momento antes de tentar novamente.",
     "auth": "Falha na autenticação. Verifica a tua API key nas Definições.",
     "uiCrash": "O add-in encontrou um erro inesperado. Recarrega para continuar.",

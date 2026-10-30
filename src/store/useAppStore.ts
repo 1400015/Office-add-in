@@ -24,6 +24,7 @@ import { ModelService } from "../services/ModelService";
 import { STORAGE_KEYS } from "../constants";
 import { logger } from "../services/LoggerService";
 import { CryptoService } from "../services/CryptoService";
+import { detectLanguage } from "../i18n";
 
 interface PendingAction {
   id: string;
@@ -120,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   reasoning: "medium",
   systemPrompt: "",
   theme: "auto",
-  language: "en",
+  language: detectLanguage(),
   view: initialView(),
 
   currentChatId: null,
@@ -290,7 +291,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       reasoning: reasoning ?? "medium",
       systemPrompt: systemPrompt ?? "",
       theme: theme ?? "auto",
-      language: language ?? "en",
+      language: language ?? detectLanguage(),
       history,
       secretsLocked,
       passphraseEnabled,
