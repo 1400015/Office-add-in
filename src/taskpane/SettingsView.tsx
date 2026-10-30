@@ -19,14 +19,16 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
 import { PROVIDER_DEFINITIONS, PROVIDER_ORDER } from "../config/providers";
-import { MAX_TOKENS_LIMIT } from "../config/reasoningProfiles";
-import { modelParams } from "../config/modelParams";
 import { isOllamaCompatible } from "../services/OfficeService";
 import { ModelService } from "../services/ModelService";
 import type { ProviderId, ThemeMode } from "../types";
-
-const THEME_OPTIONS: ThemeMode[] = ["light", "dark", "auto"];
-const LANGUAGE_OPTIONS = ["en", "pt", "es", "fr", "de"] as const;
+import { LANGUAGE_OPTIONS, THEME_OPTIONS } from "./components/settings/options";
+import { effectiveMaxTokensLimit } from "./components/settings/limits";
+import { runConnectionTest } from "./components/settings/connection";
+import {
+  passphraseErrorKey,
+  submitPassphrase,
+} from "./components/settings/passphrase";
 
 export function SettingsView(): JSX.Element {
   const { t, i18n } = useTranslation();
@@ -60,10 +62,7 @@ export function SettingsView(): JSX.Element {
     Record<string, { ok: boolean; message: string }>
   >({});
 
-  const maxTokensLimit = Math.min(
-    MAX_TOKENS_LIMIT,
-    modelParams(activeModel || "default", activeProvider).maxTokensLimit
-  );
+  const maxTokensLimit = effectiveMaxTokensLimit(activeModel, activeProvider);
 
   const onSave = async (): Promise<void> => {
     await persist();
@@ -75,22 +74,12 @@ export function SettingsView(): JSX.Element {
     setTesting(id);
     setTestResult((prev) => ({ ...prev, [id]: { ok: true, message: "" } }));
     try {
-      const models = await ModelService.listModels(providerConfigs[id], true);
-      setTestResult((prev) => ({
-        ...prev,
-        [id]: {
-          ok: true,
-          message: t("settings.connectionOk", { count: models.length }),
-        },
-      }));
-    } catch (error) {
-      setTestResult((prev) => ({
-        ...prev,
-        [id]: {
-          ok: false,
-          message: error instanceof Error ? error.message : String(error),
-        },
-      }));
+      const outcome = await runConnectionTest(
+        ModelService.listModels,
+        providerConfigs[id],
+        t
+      );
+      setTestResult((prev) => ({ ...prev, [id]: outcome }));
     } finally {
       setTesting(null);
     }
@@ -100,24 +89,19 @@ export function SettingsView(): JSX.Element {
     setPhraseBusy(true);
     setPhraseError(null);
     try {
-      if (!passphraseEnabled) {
-        await createPassphrase(phrase);
-        setPhrase("");
-        return;
-      }
-      const ok = await unlockSecrets(phrase);
-      if (!ok) {
-        setPhraseError(t("settings.passphraseWrong"));
+      const outcome = await submitPassphrase(phrase, {
+        passphraseEnabled,
+        create: createPassphrase,
+        unlock: unlockSecrets,
+      });
+      if (outcome.errorKey) {
+        setPhraseError(t(outcome.errorKey));
         return;
       }
       setPhrase("");
     } catch (error) {
       const code = error instanceof Error ? error.message : "";
-      setPhraseError(
-        code === "passphrase-short"
-          ? t("settings.passphraseShort")
-          : t("settings.passphraseFailed")
-      );
+      setPhraseError(t(passphraseErrorKey(code)));
     } finally {
       setPhraseBusy(false);
     }
