@@ -49,7 +49,7 @@ OfficeUniversalAI/
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 20.19 (React 19 and Vite 7 require at least Node 20.19)
 - Microsoft 365 (Desktop or Web) — for sideloading
 
 ### Install and run
@@ -119,7 +119,7 @@ Open the **Settings** tab inside the add-in:
 The UI is fully translated into **English, Portuguese, Spanish, French and German** with i18next and react-i18next.
 
 - **Bundles**: [`src/i18n/locales/`](src/i18n/locales/) holds `en.json`, `pt.json`, `es.json`, `fr.json` and `de.json`, each with the same key set (147 leaf keys). They are registered in [`src/i18n/index.ts`](src/i18n/index.ts) with `fallbackLng: "en"`. On first run the UI language is detected from the browser/Office language (`detectLanguage()`), falling back to English; a language saved in Settings overrides the detection on start.
-- **Usage**: components call `t("section.key")`. Dynamic keys such as `` t(`languages.${code}`) `` must resolve to an existing section of the bundle.
+- **Usage**: components call `t("section.key")`. Dynamic keys such as ``t(`languages.${code}`)`` must resolve to an existing section of the bundle.
 - **Plurals**: keys that vary with a count use the i18next `_one` / `_other` suffixes (e.g. `history.messageCount_one`) and are called with `t("history.messageCount", { count })`.
 - **Errors**: services return `errors.*` keys via [`src/services/ErrorService.ts`](src/services/ErrorService.ts) and the UI translates them at render time, so raw provider or Office.js messages are never shown as-is.
 - **Prompt templates**: [`src/taskpane/PromptTemplates.ts`](src/taskpane/PromptTemplates.ts) defines every field with all five languages — TypeScript rejects a template that misses one — and `templateText(value, language)` selects the right text (handles region tags like `pt-BR`, falls back to English).
