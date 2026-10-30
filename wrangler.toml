@@ -4,5 +4,10 @@ compatibility_date = "2026-10-01"
 
 # Restrict which browser origins may call the proxy.
 # Set this to the origin that hosts the add-in before deploying.
+# In production (ENVIRONMENT = "production") the worker refuses requests
+# unless ALLOWED_ORIGINS is configured (fail-fast, HTTP 500).
+# Requests without an Origin header (non-browser clients) are also refused
+# in production. Enable both vars before deploying:
 # [vars]
+# ENVIRONMENT = "production"
 # ALLOWED_ORIGINS = "https://meu-servidor.com"

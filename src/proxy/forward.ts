@@ -16,9 +16,19 @@ const HOP_BY_HOP = new Set([
 export interface ProxyEnv {
   /** Comma-separated list of origins allowed to call the proxy. */
   ALLOWED_ORIGINS?: string;
+  /** Set to "production" to enable fail-fast configuration checks. */
+  ENVIRONMENT?: string;
 }
 
 const DEFAULT_ALLOWED_ORIGINS = ["https://localhost:3000"];
+
+export function isProduction(env?: ProxyEnv): boolean {
+  return env?.ENVIRONMENT?.trim().toLowerCase() === "production";
+}
+
+export function hasConfiguredOrigins(env?: ProxyEnv): boolean {
+  return Boolean(env?.ALLOWED_ORIGINS?.trim());
+}
 
 export function isAllowedUpstream(endpoint: string): boolean {
   let url: URL;
@@ -62,9 +72,10 @@ export function isOriginAllowed(
   origin: string | null,
   env?: ProxyEnv
 ): boolean {
-  // Requests without an Origin (curl, server-to-server) cannot be protected
-  // by CORS, so the allowlist only applies to browsers.
-  if (!origin) return true;
+  // Requests without an Origin header (curl, server-to-server) cannot be
+  // protected by CORS. In production they are refused; browsers always send
+  // Origin on cross-origin fetches.
+  if (!origin) return !isProduction(env);
   return allowedOrigins(env).includes(origin);
 }
 
@@ -84,6 +95,16 @@ export async function handleProxy(
   request: Request,
   env?: ProxyEnv
 ): Promise<Response> {
+  if (isProduction(env) && !hasConfiguredOrigins(env)) {
+    return new Response(
+      "Proxy misconfiguration: ALLOWED_ORIGINS must be configured in production",
+      {
+        status: 500,
+        headers: corsHeaders(null),
+      }
+    );
+  }
+
   const origin = request.headers.get("Origin");
   if (!isOriginAllowed(origin, env)) {
     return new Response("Origin not allowed", {

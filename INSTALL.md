@@ -375,13 +375,19 @@ npx wrangler deploy
 
 O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
 
-Antes de publicar, limita as origens que podem chamar o proxy:
+Antes de publicar, limita as origens que podem chamar o proxy. Em produção
+(`ENVIRONMENT=production`) o worker recusa-se a servir pedidos sem essa
+configuração — devolve HTTP 500 em todas as rotas até `ALLOWED_ORIGINS` estar
+definido (fail-fast). Pedidos sem header `Origin` (clientes não-browser, como
+curl) também são recusados em produção.
 
 ```bash
-npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
+npx wrangler deploy --var ENVIRONMENT:production --var ALLOWED_ORIGINS:"https://meu-servidor.com"
 ```
 
-Só essa origem pode chamar o Worker a partir do browser. Sem esta variável, apenas `https://localhost:3000` é aceite.
+Só essa origem pode chamar o Worker a partir do browser. Sem `ENVIRONMENT=production`
+(desenvolvimento), apenas `https://localhost:3000` é aceite como origem e pedidos
+sem `Origin` continuam a ser aceites para testes locais com curl.
 
 Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `https://ouai-proxy.workers.dev`) em **URL do proxy**.
 
