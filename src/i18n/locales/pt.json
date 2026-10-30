@@ -4,7 +4,7 @@
     "chat": "Chat",
     "settings": "Definições",
     "history": "Histórico",
-    "templates": "Predefinições"
+    "templates": "Modelos"
   },
   "chat": {
     "placeholder": "Escreve aqui...",
@@ -127,7 +127,7 @@
       "legal": "Jurídico",
       "education": "Educação"
     },
-    "use": "Usar predefinição",
+    "use": "Usar modelo",
     "sent": "Enviado"
   },
   "history": {

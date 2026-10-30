@@ -2,12 +2,17 @@ name = "ouai-proxy"
 main = "proxy/worker.ts"
 compatibility_date = "2026-10-01"
 
-# Restrict which browser origins may call the proxy.
-# Set this to the origin that hosts the add-in before deploying.
-# In production (ENVIRONMENT = "production") the worker refuses requests
-# unless ALLOWED_ORIGINS is configured (fail-fast, HTTP 500).
-# Requests without an Origin header (non-browser clients) are also refused
-# in production. Enable both vars before deploying:
-# [vars]
-# ENVIRONMENT = "production"
-# ALLOWED_ORIGINS = "https://meu-servidor.com"
+# `wrangler deploy` is production. It refuses every request until
+# ALLOWED_ORIGINS is the origin that hosts the add-in:
+#   npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
+# Local worker testing stays open only to the taskpane dev server:
+#   npx wrangler dev --env dev
+[vars]
+ENVIRONMENT = "production"
+
+[env.dev]
+name = "ouai-proxy-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+ALLOWED_ORIGINS = "https://localhost:3000"

@@ -370,24 +370,18 @@ Na secção **General**:
 A API da OpenAI e da Anthropic não envia CORS. O suplemento já sabe falar com o worker deste repositório.
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
 ```
 
 O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
 
-Antes de publicar, limita as origens que podem chamar o proxy. Em produção
-(`ENVIRONMENT=production`) o worker recusa-se a servir pedidos sem essa
-configuração — devolve HTTP 500 em todas as rotas até `ALLOWED_ORIGINS` estar
-definido (fail-fast). Pedidos sem header `Origin` (clientes não-browser, como
-curl) também são recusados em produção.
+`wrangler deploy` publica já com `ENVIRONMENT=production`. Sem `ALLOWED_ORIGINS` o worker responde HTTP 500 a todos os pedidos e também recusa pedidos sem header `Origin`. Substitui `https://meu-servidor.com` pela origem onde o suplemento está alojado. Para experimentar o worker em local:
 
 ```bash
-npx wrangler deploy --var ENVIRONMENT:production --var ALLOWED_ORIGINS:"https://meu-servidor.com"
+npx wrangler dev --env dev
 ```
 
-Só essa origem pode chamar o Worker a partir do browser. Sem `ENVIRONMENT=production`
-(desenvolvimento), apenas `https://localhost:3000` é aceite como origem e pedidos
-sem `Origin` continuam a ser aceites para testes locais com curl.
+Esse ambiente só aceita `https://localhost:3000` e deixa passar pedidos sem `Origin`, para testes com curl.
 
 Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `https://ouai-proxy.workers.dev`) em **URL do proxy**.
 
