@@ -1,6 +1,7 @@
 import { RETRY_ATTEMPTS, RETRY_BASE_DELAY_MS } from "../constants";
 import { proxyFailure } from "../proxy/failures";
 import { ProviderError, type ProviderId } from "../types";
+import { consumeSseStream } from "./sse";
 import { logger } from "./LoggerService";
 
 export interface HttpRequest {
@@ -155,23 +156,9 @@ export async function httpStream(req: StreamRequest): Promise<void> {
       );
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === "[DONE]") continue;
+    await consumeSseStream({
+      body: response.body,
+      onFrame: (payload) => {
         try {
           const parsed = JSON.parse(payload) as {
             choices?: Array<{ delta?: { content?: string } }>;
@@ -189,8 +176,8 @@ export async function httpStream(req: StreamRequest): Promise<void> {
         } catch (error) {
           if (error instanceof ProviderError) throw error;
         }
-      }
-    }
+      },
+    });
   } finally {
     clearTimeout(timeoutId);
   }

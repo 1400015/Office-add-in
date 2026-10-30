@@ -8,6 +8,7 @@ import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
+import { consumeSseStream } from "../services/sse";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
 
 interface ClaudeResponse {
@@ -132,20 +133,9 @@ export class ClaudeProvider extends BaseProvider {
           `Claude stream failed with status ${response.status}: ${text.slice(0, 300)}`
         );
       }
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const payload = trimmed.slice(5).trim();
-          if (payload === "[DONE]") continue;
+      await consumeSseStream({
+        body: response.body,
+        onFrame: (payload) => {
           let parsed: {
             type?: string;
             delta?: { type?: string; text?: string };
@@ -154,7 +144,7 @@ export class ClaudeProvider extends BaseProvider {
           try {
             parsed = JSON.parse(payload) as typeof parsed;
           } catch {
-            continue; // Malformed SSE frame, skip it.
+            return; // Malformed SSE frame, skip it.
           }
           if (parsed.error?.message) {
             throw new ProviderError(
@@ -167,8 +157,8 @@ export class ClaudeProvider extends BaseProvider {
             const chunk = parsed.delta?.text;
             if (chunk) onToken(chunk);
           }
-        }
-      }
+        },
+      });
     } finally {
       clearTimeout(timeoutId);
     }
