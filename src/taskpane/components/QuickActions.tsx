@@ -1,58 +1,31 @@
 import { useState } from "react";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogBody,
-  DialogContent,
-  DialogSurface,
-  DialogTitle,
-  Dropdown,
-  Field,
-  Input,
-  Option,
-  Spinner,
-  Textarea,
-} from "@fluentui/react-components";
+import { Button, Spinner } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store/useAppStore";
 import { useChat } from "../../hooks/useChat";
 import * as wordActions from "../../word/wordActions";
-import * as excelActions from "../../excel/excelActions";
 import * as powerpointActions from "../../powerpoint/powerpointActions";
 import {
   clampSlideCount,
   contentLanguageName,
   defaultTranslateLanguageCode,
 } from "../../powerpoint/slidePlan";
+import {
+  buildInstructionAction,
+  buildQuickActions,
+  instructionTitleKey,
+  type DialogKind,
+  type InstructionKind,
+} from "./quickActions/actions";
+import { type TargetLanguage } from "./quickActions/languages";
+import {
+  CreatePresentationDialog,
+  InstructionDialog,
+  TranslateDialog,
+} from "./quickActions/dialogs";
 
-type PromptFn = (text: string) => Promise<string>;
-
-interface ActionDef {
-  key: string;
-  label: string;
-  run: (prompt: PromptFn) => Promise<string>;
-}
-
-/** Codes offered by the translate dialog, in UI order. */
-export const TARGET_LANGUAGES = ["pt", "en", "es", "fr", "de"] as const;
-
-/** Codes offered by the translate dialog, in UI order. */
-export type TargetLanguage = (typeof TARGET_LANGUAGES)[number];
-
-/** Fluent UI dropdowns report the option as a possibly-undefined string. */
-export function isTargetLanguage(
-  value: string | undefined
-): value is TargetLanguage {
-  return (
-    typeof value === "string" &&
-    (TARGET_LANGUAGES as readonly string[]).includes(value)
-  );
-}
-
-type DialogKind = "create" | "translate" | "instruction" | null;
-type InstructionKind =
-  "word-generate" | "excel-formula" | "excel-vba" | "excel-script";
+export { TARGET_LANGUAGES, isTargetLanguage } from "./quickActions/languages";
+export type { TargetLanguage } from "./quickActions/languages";
 
 export function QuickActions(): JSX.Element {
   const { t, i18n } = useTranslation();
@@ -69,76 +42,8 @@ export function QuickActions(): JSX.Element {
     defaultTranslateLanguageCode(i18n.language)
   );
 
-  const actions: ActionDef[] = (() => {
-    switch (host) {
-      case "word":
-        return [
-          {
-            key: "summarize",
-            label: t("quickActions.word.summarize"),
-            run: (p) => wordActions.summarizeDocument(p),
-          },
-          {
-            key: "explain",
-            label: t("quickActions.word.explain"),
-            run: (p) => wordActions.explainSelection(p),
-          },
-          {
-            key: "rewrite",
-            label: t("quickActions.word.rewrite"),
-            run: (p) => wordActions.rewriteSelection(p),
-          },
-          {
-            key: "fixGrammar",
-            label: t("quickActions.word.fixGrammar"),
-            run: (p) => wordActions.fixGrammar(p),
-          },
-        ];
-      case "excel":
-        return [
-          {
-            key: "explainFormula",
-            label: t("quickActions.excel.explainFormula"),
-            run: (p) => excelActions.explainFormula(p),
-          },
-          {
-            key: "analyseTable",
-            label: t("quickActions.excel.analyseTable"),
-            run: (p) => excelActions.analyseTable(p),
-          },
-        ];
-      case "powerpoint":
-        return [
-          {
-            key: "improveSlide",
-            label: t("quickActions.powerpoint.improveSlide"),
-            run: (p) => powerpointActions.improveSlide(p),
-          },
-          {
-            key: "fixGrammar",
-            label: t("quickActions.powerpoint.fixGrammar"),
-            run: (p) => powerpointActions.fixSlideGrammar(p),
-          },
-          {
-            key: "explain",
-            label: t("quickActions.powerpoint.explain"),
-            run: (p) => powerpointActions.explainSlide(p),
-          },
-          {
-            key: "speakerNotes",
-            label: t("quickActions.powerpoint.speakerNotes"),
-            run: (p) => powerpointActions.generateSpeakerNotes(p),
-          },
-          {
-            key: "summarizePresentation",
-            label: t("quickActions.powerpoint.summarizePresentation"),
-            run: (p) => powerpointActions.summarizePresentation(p),
-          },
-        ];
-      default:
-        return [];
-    }
-  })();
+  const actions = buildQuickActions(host, t);
+  const busy = pendingAction !== null;
 
   const closeDialog = (): void => setDialog(null);
 
@@ -187,39 +92,9 @@ export function QuickActions(): JSX.Element {
     const text = instruction.trim();
     if (!text) return;
     closeDialog();
-    if (instructionKind === "word-generate") {
-      void runQuickAction(
-        (p) => wordActions.generateAndInsert(text, p),
-        t("quickActions.word.generate")
-      );
-      return;
-    }
-    if (instructionKind === "excel-formula") {
-      void runQuickAction(
-        (p) => excelActions.generateFormula(text, p),
-        t("quickActions.excel.generateFormula")
-      );
-      return;
-    }
-    if (instructionKind === "excel-vba") {
-      void runQuickAction(
-        (p) => excelActions.generateVba(text, p),
-        t("quickActions.excel.generateVba")
-      );
-      return;
-    }
-    void runQuickAction(
-      (p) => excelActions.generateOfficeScript(text, p),
-      t("quickActions.excel.generateScript")
-    );
+    const { label, run } = buildInstructionAction(instructionKind, text, t);
+    void runQuickAction(run, label);
   };
-
-  const instructionTitle = {
-    "word-generate": t("dialogs.generateTitle"),
-    "excel-formula": t("dialogs.formulaTitle"),
-    "excel-vba": t("dialogs.vbaTitle"),
-    "excel-script": t("dialogs.scriptTitle"),
-  }[instructionKind];
 
   if (host !== "powerpoint" && actions.length === 0) return <></>;
 
@@ -237,7 +112,7 @@ export function QuickActions(): JSX.Element {
           </Button>
         )}
         {actions.map((action) => {
-          const busy =
+          const actionBusy =
             pendingAction !== null && pendingAction.label === action.label;
           return (
             <Button
@@ -247,7 +122,7 @@ export function QuickActions(): JSX.Element {
               disabled={pendingAction !== null}
               onClick={() => void runQuickAction(action.run, action.label)}
             >
-              {busy ? <Spinner size="tiny" /> : action.label}
+              {actionBusy ? <Spinner size="tiny" /> : action.label}
             </Button>
           );
         })}
@@ -311,129 +186,35 @@ export function QuickActions(): JSX.Element {
         )}
       </div>
 
-      <Dialog
+      <CreatePresentationDialog
         open={dialog === "create"}
-        onOpenChange={(_, data) => {
-          if (!data.open) closeDialog();
-        }}
-      >
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>{t("dialogs.createTitle")}</DialogTitle>
-            <DialogContent>
-              <div className="dialog-fields">
-                <Field label={t("dialogs.topic")} required>
-                  <Input
-                    value={topic}
-                    placeholder={t("dialogs.topicPlaceholder")}
-                    onChange={(_, data) => setTopic(data.value)}
-                  />
-                </Field>
-                <Field label={t("dialogs.slideCount")}>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={15}
-                    value={slideCount}
-                    onChange={(_, data) => setSlideCount(data.value)}
-                  />
-                </Field>
-              </div>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={closeDialog}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                appearance="primary"
-                disabled={!topic.trim() || pendingAction !== null}
-                onClick={submitCreate}
-              >
-                {t("dialogs.create")}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+        onClose={closeDialog}
+        busy={busy}
+        topic={topic}
+        onTopicChange={setTopic}
+        slideCount={slideCount}
+        onSlideCountChange={setSlideCount}
+        onSubmit={submitCreate}
+      />
 
-      <Dialog
+      <TranslateDialog
         open={dialog === "translate"}
-        onOpenChange={(_, data) => {
-          if (!data.open) closeDialog();
-        }}
-      >
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>{t("dialogs.translateTitle")}</DialogTitle>
-            <DialogContent>
-              <Field label={t("dialogs.targetLanguage")}>
-                <Dropdown
-                  value={t(`languages.${targetLang}`)}
-                  selectedOptions={[targetLang]}
-                  onOptionSelect={(_, data) => {
-                    if (isTargetLanguage(data.optionValue)) {
-                      setTargetLang(data.optionValue);
-                    }
-                  }}
-                >
-                  {TARGET_LANGUAGES.map((code) => (
-                    <Option key={code} value={code}>
-                      {t(`languages.${code}`)}
-                    </Option>
-                  ))}
-                </Dropdown>
-              </Field>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={closeDialog}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                appearance="primary"
-                disabled={pendingAction !== null}
-                onClick={submitTranslate}
-              >
-                {t("dialogs.translate")}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+        onClose={closeDialog}
+        busy={busy}
+        targetLang={targetLang}
+        onTargetLangChange={setTargetLang}
+        onSubmit={submitTranslate}
+      />
 
-      <Dialog
+      <InstructionDialog
         open={dialog === "instruction"}
-        onOpenChange={(_, data) => {
-          if (!data.open) closeDialog();
-        }}
-      >
-        <DialogSurface>
-          <DialogBody>
-            <DialogTitle>{instructionTitle}</DialogTitle>
-            <DialogContent>
-              <Field label={t("dialogs.instruction")} required>
-                <Textarea
-                  value={instruction}
-                  placeholder={t("dialogs.instructionPlaceholder")}
-                  onChange={(_, data) => setInstruction(data.value)}
-                  rows={4}
-                />
-              </Field>
-            </DialogContent>
-            <DialogActions>
-              <Button appearance="secondary" onClick={closeDialog}>
-                {t("common.cancel")}
-              </Button>
-              <Button
-                appearance="primary"
-                disabled={!instruction.trim() || pendingAction !== null}
-                onClick={submitInstruction}
-              >
-                {t("dialogs.generate")}
-              </Button>
-            </DialogActions>
-          </DialogBody>
-        </DialogSurface>
-      </Dialog>
+        onClose={closeDialog}
+        busy={busy}
+        title={t(instructionTitleKey(instructionKind))}
+        instruction={instruction}
+        onInstructionChange={setInstruction}
+        onSubmit={submitInstruction}
+      />
     </>
   );
 }
