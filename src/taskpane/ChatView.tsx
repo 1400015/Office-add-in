@@ -27,10 +27,16 @@ export function ChatView(): JSX.Element {
 
   const messages = useAppStore((s) => s.messages);
   const isStreaming = useAppStore((s) => s.isStreaming);
+  const pendingAction = useAppStore((s) => s.pendingAction);
+  const secretsLocked = useAppStore((s) => s.secretsLocked);
+  const hydrated = useAppStore((s) => s.hydrated);
+  const vaultBusy = useAppStore((s) => s.vaultBusy);
+  const activeModel = useAppStore((s) => s.activeModel);
+  const busy = isStreaming || pendingAction !== null;
   const streamingContent = useAppStore((s) => s.streamingContent);
   const error = useAppStore((s) => s.error);
   const setError = useAppStore((s) => s.setError);
-  const { sendMessage, stopStreaming, insertLastAnswer, regenerateLast } =
+  const { submitMessage, stopStreaming, insertLastAnswer, regenerateLast } =
     useChat();
 
   useEffect(() => {
@@ -39,9 +45,20 @@ export function ChatView(): JSX.Element {
 
   const onSend = (): void => {
     const content = input.trim();
-    if (!content || isStreaming) return;
-    setInput("");
-    void sendMessage(content);
+    if (
+      !content ||
+      busy ||
+      secretsLocked ||
+      !hydrated ||
+      vaultBusy ||
+      !activeModel
+    )
+      return;
+    const request = submitMessage(content);
+    if (request) {
+      setInput("");
+      void request;
+    }
   };
 
   const lastAssistantIndex = (() => {
@@ -76,19 +93,25 @@ export function ChatView(): JSX.Element {
             isLastAssistant={index === lastAssistantIndex}
             onInsert={() => void insertLastAnswer()}
             onRegenerate={
-              index === lastAssistantIndex
+              index === lastAssistantIndex &&
+              !busy &&
+              !secretsLocked &&
+              hydrated &&
+              !vaultBusy
                 ? () => void regenerateLast()
                 : undefined
             }
           />
         ))}
 
-        {isStreaming && (
-          <div className="message message-assistant">
-            <div>{streamingContent || t("chat.thinking")}</div>
-            {!streamingContent && <Spinner size="tiny" />}
-          </div>
-        )}
+        {isStreaming &&
+          (streamingContent ||
+            messages[messages.length - 1]?.role !== "assistant") && (
+            <div className="message message-assistant">
+              <div>{streamingContent || t("chat.thinking")}</div>
+              {!streamingContent && <Spinner size="tiny" />}
+            </div>
+          )}
 
         {error && (
           <MessageBar intent="error">
@@ -125,10 +148,10 @@ export function ChatView(): JSX.Element {
               onSend();
             }
           }}
-          disabled={isStreaming}
+          disabled={busy || secretsLocked || !hydrated || vaultBusy}
           rows={2}
         />
-        {isStreaming ? (
+        {busy ? (
           <Button
             appearance="primary"
             icon={<Stop20Regular />}
@@ -141,7 +164,13 @@ export function ChatView(): JSX.Element {
             appearance="primary"
             icon={<Send20Regular />}
             onClick={onSend}
-            disabled={!input.trim()}
+            disabled={
+              !input.trim() ||
+              secretsLocked ||
+              !hydrated ||
+              vaultBusy ||
+              !activeModel
+            }
           >
             {t("chat.send")}
           </Button>

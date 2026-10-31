@@ -178,6 +178,53 @@ describe("slide plan parsing", () => {
 });
 
 describe("PowerPoint actions", () => {
+  it("preserves all edited shapes and returns generated text on conflict", async () => {
+    const deck = installPowerPoint([slide("s1", ["First", "Second"])]);
+    await expect(
+      improveSlide(async () => {
+        deck.slides[0]!.shapes.items[1]!.textFrame.textRange.text =
+          "Changed by user";
+        return JSON.stringify(["Generated first", "Generated second"]);
+      })
+    ).rejects.toMatchObject({ result: "Generated first\n\nGenerated second" });
+    expect(
+      deck.slides[0]!.shapes.items.map((item) => item.textFrame.textRange.text)
+    ).toEqual(["First", "Changed by user"]);
+  });
+
+  it("does not write any shape when an original was deleted", async () => {
+    const deck = installPowerPoint([slide("s1", ["First", "Second"])]);
+    await expect(
+      improveSlide(async () => {
+        deck.slides[0]!.shapes.items.pop();
+        return JSON.stringify(["Generated first", "Generated second"]);
+      })
+    ).rejects.toMatchObject({ result: "Generated first\n\nGenerated second" });
+    expect(deck.slides[0]!.shapes.items[0]!.textFrame.textRange.text).toBe(
+      "First"
+    );
+  });
+
+  it("does not write after cancellation while awaiting the model", async () => {
+    const deck = installPowerPoint([slide("s1", ["Original"])]);
+    const controller = new AbortController();
+    const action = {
+      signal: controller.signal,
+      assertCurrent: () => {
+        if (controller.signal.aborted) throw new Error("cancelled");
+      },
+    };
+    await expect(
+      improveSlide(async () => {
+        controller.abort();
+        return '["Generated"]';
+      }, action)
+    ).rejects.toThrow("cancelled");
+    expect(deck.slides[0]!.shapes.items[0]!.textFrame.textRange.text).toBe(
+      "Original"
+    );
+  });
+
   it("writes improved text back onto the slide", async () => {
     const deck = installPowerPoint([slide("s1", ["Hello", "World"])]);
     const result = await improveSlide(async () =>

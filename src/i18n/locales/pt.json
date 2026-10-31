@@ -33,7 +33,9 @@
     "provider": "Fornecedor",
     "model": "Modelo",
     "reasoning": "Raciocínio",
-    "refreshModels": "Atualizar modelos"
+    "refreshModels": "Atualizar modelos",
+    "modelsFallback": "A lista contém sugestões ou resultados guardados porque não foi possível contactar o fornecedor.",
+    "noModels": "Não há modelos disponíveis para este fornecedor."
   },
   "settings": {
     "providers": "Fornecedores",
@@ -71,7 +73,8 @@
     },
     "language": "Idioma",
     "ollamaWarning": "O Ollama corre em localhost e só funciona no Office Desktop. No Office web, a segurança do browser bloqueia ligações locais.",
-    "corsWarning": "A API deste fornecedor não permite chamadas diretas do browser (sem CORS). Ativa a opção de proxy ou usa um ponto de extremidade BFF."
+    "corsWarning": "A API deste fornecedor não permite chamadas diretas do browser (sem CORS). Ativa a opção de proxy ou usa um ponto de extremidade BFF.",
+    "connectionSuccess": "Ligação verificada."
   },
   "quickActions": {
     "word": {
@@ -163,6 +166,7 @@
     "rateLimited": "Limite de pedidos atingido. Aguarda um momento antes de tentar novamente.",
     "auth": "Falha na autenticação. Verifica a tua API key nas Definições.",
     "uiCrash": "O add-in encontrou um erro inesperado. Recarrega para continuar.",
+    "settingsLoad": "Não foi possível carregar as definições. Recarrega para tentar novamente.",
     "insertFailed": "Não foi possível inserir a resposta.",
     "noText": "Não há texto para trabalhar.",
     "noSelection": "Seleciona primeiro algum texto.",
@@ -174,7 +178,14 @@
     "badAiFormat": "O modelo não devolveu o formato esperado. Tenta outra vez.",
     "proxyConfig": "O proxy não está configurado. Define ALLOWED_ORIGINS no worker antes de o publicar em produção.",
     "proxyOrigin": "O proxy rejeitou a origem deste complemento. Acrescenta a origem do complemento a ALLOWED_ORIGINS no worker.",
-    "proxyUpstream": "O proxy não encaminha para este fornecedor. Verifica o ponto de extremidade nas Definições; só fornecedores na lista são aceites."
+    "proxyUpstream": "O proxy não encaminha para este fornecedor. Verifica o ponto de extremidade nas Definições; só fornecedores na lista são aceites.",
+    "editConflict": "O conteúdo original mudou. A resposta não foi aplicada; está disponível no chat.",
+    "conflictSaveFailed": "O conteúdo original mudou, por isso a resposta não foi aplicada. Está visível no chat, mas não foi possível guardá-la no histórico.",
+    "selectionTooLong": "A seleção excede 60 000 caracteres. Seleciona um trecho mais curto.",
+    "emptyResponse": "O fornecedor devolveu uma resposta vazia. Tenta novamente.",
+    "locked": "Desbloqueia a frase-passe antes de usar o assistente.",
+    "contextTruncated": "Só foi enviada parte do conteúdo selecionado porque excede o limite de contexto.",
+    "notReady": "As definições ainda estão a carregar. Aguarda um momento."
   },
   "common": {
     "loading": "A carregar...",

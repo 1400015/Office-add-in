@@ -24,7 +24,7 @@ Este guia explica, passo a passo, como instalar o add-in **AI Assistant** no Mic
 
 | Componente | Requisito |
 |---|---|
-| **Node.js** | versão >= 18 ([nodejs.org](https://nodejs.org)) |
+| **Node.js** | versão >= 20.19 ([nodejs.org](https://nodejs.org)) |
 | **Microsoft 365** | qualquer versão com suporte a add-ins (Word, Excel ou PowerPoint) |
 | **Sistema operativo** | Windows 10/11, macOS 10.15+, ou browser moderno (para Web) |
 | **Ligação à internet** | necessária para usar os fornecedores de IA online |
@@ -306,7 +306,7 @@ Depois de carregar o add-in, verifica se está tudo a funcionar:
 | 2 | Clicar em **Open Chat** abre o painel lateral | ✅ Taskpane carrega sem erros |
 | 3 | O seletor de fornecedor mostra os 6 proveedores | ✅ Mistral, OpenAI, Claude, Gemini, OpenRouter, Ollama |
 | 4 | Ir a **Settings** e guardar uma API key | ✅ "Settings saved" aparece |
-| 5 | Clicar em **Test connection** | ✅ "OK (N models)" ou mensagem de erro clara |
+| 5 | Clicar em **Test connection** | ✅ Confirmação de acesso ao endpoint ou mensagem de erro clara |
 | 6 | Enviar uma mensagem no chat | ✅ Resposta da IA aparece (com streaming) |
 | 7 | Usar uma ação rápida (ex: **Summarize** no Word) | ✅ Resultado aparece no chat |
 
@@ -342,7 +342,9 @@ Para cada fornecedor, preenche:
 
 ### Passo 3 — Testar a ligação
 
-Clica em **Test connection** para verificar se o fornecedor responde.
+Clica em **Test connection** para verificar o acesso ao endpoint e, quando aplicável, a autenticação. O teste não gera texto nem confirma saldo ou acesso a todos os modelos. As sugestões de modelos disponíveis quando a listagem falha não confirmam a ligação. No Ollama, uma lista vazia significa que não há modelos instalados.
+
+No Word, as ações que substituem texto recusam seleções com mais de 60 000 caracteres. Se o conteúdo de destino mudar no Word, Excel ou PowerPoint enquanto a IA responde, o resultado é apresentado no chat sem substituir o conteúdo alterado.
 
 ### Passo 4 — Configurações gerais
 
@@ -373,7 +375,7 @@ A API da OpenAI e da Anthropic não envia CORS. O suplemento já sabe falar com 
 npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
 ```
 
-O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
+O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho de autenticação do fornecedor, não no URL.
 
 `wrangler deploy` publica já com `ENVIRONMENT=production`. Sem `ALLOWED_ORIGINS` o worker responde HTTP 500 a todos os pedidos e também recusa pedidos sem header `Origin`. Substitui `https://meu-servidor.com` pela origem onde o suplemento está alojado. Para experimentar o worker em local:
 
@@ -455,11 +457,11 @@ O add-in guarda dados no `OfficeRuntime.storage` e IndexedDB:
 
 1. Verifica se a key está correta (copia novamente do dashboard do fornecedor)
 2. Verifica se a key tem créditos/quota disponível
-3. Para OpenAI/Claude: verifica se o proxy está a injetar a key corretamente
+3. Para OpenAI/Claude: verifica se o proxy encaminha o cabeçalho de autenticação corretamente
 
 ### ❌ "Erro 429 (rate limit)"
 
-O add-in tenta automaticamente 3 vezes com backoff exponencial. Se persistir:
+Os pedidos JSON tentam automaticamente até 3 vezes com backoff exponencial. O streaming não é repetido automaticamente. Se o erro persistir:
 - Aguarda alguns minutos
 - Verifica os limites da tua conta no fornecedor
 - Muda para outro modelo/fornecedor

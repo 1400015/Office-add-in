@@ -1,4 +1,6 @@
 import { insertTextInCell } from "../excel/excelActions";
+import { readBoundedSelection } from "../excel/rangeSnapshot";
+import type { ActionContext } from "./ActionContext";
 import { insertTextOnSlide } from "../powerpoint/powerpointActions";
 import type { ChatContext, OfficeHost, OfficePlatform } from "../types";
 import { MAX_CONTEXT_CHARS } from "../constants";
@@ -13,7 +15,8 @@ export function isOfficeReady(): boolean {
 }
 
 export async function waitForOfficeReady(): Promise<boolean> {
-  if (!isOfficeReady()) return false;
+  if (typeof Office === "undefined" || typeof Office.onReady !== "function")
+    return false;
   if (!readyPromise) {
     readyPromise = new Promise((resolve) => {
       Office.onReady((info) => {
@@ -21,7 +24,7 @@ export async function waitForOfficeReady(): Promise<boolean> {
           host: info.host,
           platform: info.platform,
         });
-        resolve(true);
+        resolve(Boolean(info.host));
       });
     });
   }
@@ -81,7 +84,8 @@ function truncate(text: string): string {
   return `${text.slice(0, MAX_CONTEXT_CHARS)}\n\n[... truncated ${text.length - MAX_CONTEXT_CHARS} chars ...]`;
 }
 
-export async function getContext(): Promise<ChatContext> {
+export async function getContext(action?: ActionContext): Promise<ChatContext> {
+  action?.assertCurrent();
   const host = getHost();
   if (host === "unknown") {
     return { host, contextType: "none" };
@@ -89,13 +93,14 @@ export async function getContext(): Promise<ChatContext> {
   try {
     switch (host) {
       case "word":
-        return { host, ...(await getWordContext()) };
+        return { host, ...(await getWordContext(action)) };
       case "excel":
-        return { host, ...(await getExcelContext()) };
+        return { host, ...(await getExcelContext(action)) };
       case "powerpoint":
-        return { host, ...(await getPowerPointContext()) };
+        return { host, ...(await getPowerPointContext(action)) };
     }
   } catch (error) {
+    action?.assertCurrent();
     logger.warn("office", "Failed to read Office context", {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -103,14 +108,16 @@ export async function getContext(): Promise<ChatContext> {
   }
 }
 
-async function getWordContext(): Promise<
-  Pick<ChatContext, "selectionText" | "contextType">
-> {
+async function getWordContext(
+  action?: ActionContext
+): Promise<Pick<ChatContext, "selectionText" | "contextType">> {
   return Word.run(async (context) => {
     const selection = context.document.getSelection();
     selection.load("text");
     await context.sync();
+    action?.assertCurrent();
     const text = selection.text.trim();
+    if (text.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
     if (text.length > 0) {
       return {
         selectionText: truncate(text),
@@ -120,7 +127,9 @@ async function getWordContext(): Promise<
     const body = context.document.body;
     body.load("text");
     await context.sync();
+    action?.assertCurrent();
     const full = body.text.trim();
+    if (full.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
     if (!full) return { contextType: "none" as const };
     return {
       selectionText: truncate(full),
@@ -129,47 +138,37 @@ async function getWordContext(): Promise<
   });
 }
 
-async function getExcelContext(): Promise<
-  Pick<ChatContext, "selectionText" | "contextType">
-> {
+async function getExcelContext(
+  action?: ActionContext
+): Promise<Pick<ChatContext, "selectionText" | "contextType">> {
   return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("values,address");
-    await context.sync();
-    const values = range.values as (string | number | boolean)[][];
+    const range = await readBoundedSelection(context, false);
+    action?.assertCurrent();
+    const values = range.values;
     if (values.length === 0) return { contextType: "none" as const };
-    // Serialising a whole column can freeze the taskpane, so cap the snapshot
-    // before building the CSV (same budget the Excel actions use).
-    const maxRows = 200;
-    const maxColumns = 50;
-    const rows = values.slice(0, maxRows);
-    const truncated =
-      values.length > maxRows || (values[0]?.length ?? 0) > maxColumns;
-    const csv = rows
-      .map((row) =>
-        row
-          .slice(0, maxColumns)
-          .map((cell) => String(cell ?? ""))
-          .join(",")
-      )
+    const csv = values
+      .map((row) => row.map((cell) => String(cell ?? "")).join(","))
       .join("\n");
+    if (range.truncated || csv.length > MAX_CONTEXT_CHARS)
+      action?.reportTruncation?.();
     if (csv.trim().length === 0) return { contextType: "none" as const };
     return {
       selectionText: truncate(
-        `Range ${range.address}${truncated ? " (truncated)" : ""}\n\n${csv}`
+        `Range ${range.address}, analyzed ${range.analyzedAddress}${range.truncated ? " (truncated)" : ""}\n\n${csv}`
       ),
       contextType: "range" as const,
     };
   });
 }
 
-async function getPowerPointContext(): Promise<
-  Pick<ChatContext, "selectionText" | "contextType">
-> {
+async function getPowerPointContext(
+  action?: ActionContext
+): Promise<Pick<ChatContext, "selectionText" | "contextType">> {
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedSlides();
     selected.load("items/shapes/items/textFrame/textRange");
     await context.sync();
+    action?.assertCurrent();
     const slide = selected.items[0];
     if (!slide) return { contextType: "none" as const };
     const text = slide.shapes.items
@@ -177,6 +176,7 @@ async function getPowerPointContext(): Promise<
       .join("\n")
       .trim();
     if (text.length === 0) return { contextType: "none" as const };
+    if (text.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
     return {
       selectionText: truncate(text),
       contextType: "slide" as const,

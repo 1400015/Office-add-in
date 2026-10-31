@@ -1,291 +1,311 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { consumeSseStream } from "../src/services/sse";
-import { httpStream, type StreamRequest } from "../src/services/HttpService";
-import { ClaudeProvider } from "../src/providers/ClaudeProvider";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { consumeSseStream, consumeNdjsonStream } from "../src/services/sse";
 import { OpenAIProvider } from "../src/providers/OpenAIProvider";
+import { MistralProvider } from "../src/providers/MistralProvider";
+import { OpenRouterProvider } from "../src/providers/OpenRouterProvider";
+import { GeminiProvider } from "../src/providers/GeminiProvider";
+import { ClaudeProvider } from "../src/providers/ClaudeProvider";
+import { OllamaProvider } from "../src/providers/OllamaProvider";
 import { createDefaultProviderConfig } from "../src/config/providers";
-import type { ChatMessage, ChatOptions } from "../src/types";
-
-function makeMessages(): ChatMessage[] {
-  return [{ id: "1", role: "user", content: "Hello", timestamp: Date.now() }];
-}
-
-function makeOptions(): ChatOptions {
-  return {
-    model: "test-model",
-    temperature: 0.2,
-    maxTokens: 1024,
-    reasoning: "off",
-  };
-}
+import type { ChatMessage, ChatOptions, ProviderId } from "../src/types";
 
 const encoder = new TextEncoder();
-
-/** Builds a body stream whose chunks can split lines (even UTF-8) apart. */
-function streamFromChunks(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const chunk of chunks) controller.enqueue(chunk);
-      controller.close();
+const messages: ChatMessage[] = [
+  { id: "1", role: "user", content: "Hi", timestamp: 1 },
+];
+const options: ChatOptions = {
+  model: "m",
+  temperature: 0.2,
+  maxTokens: 1024,
+  reasoning: "off",
+};
+function chunks(text: string): Uint8Array[] {
+  const bytes = encoder.encode(text);
+  return Array.from(bytes, (byte) => new Uint8Array([byte]));
+}
+function stream(parts: Uint8Array[]): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(c) {
+      parts.forEach((part) => c.enqueue(part));
+      c.close();
     },
   });
 }
-
-function sseResponse(status: number, ...chunks: Uint8Array[]): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    body: streamFromChunks(chunks),
-    text: () => Promise.resolve(""),
-  } as unknown as Response;
+function respond(text: string): void {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(new Response(stream(chunks(text)), { status: 200 }))
+  );
 }
-
-function makeStreamRequest(
-  onToken: (chunk: string) => void,
-  overrides: Partial<StreamRequest> = {}
-): StreamRequest {
-  return {
-    url: "https://example.invalid/stream",
-    headers: {},
-    body: {},
-    timeout: 5000,
-    provider: "openai",
-    onToken,
-    ...overrides,
-  } as StreamRequest;
+function provider(id: ProviderId) {
+  const config = { ...createDefaultProviderConfig(id), apiKey: "fake-key" };
+  switch (id) {
+    case "openai":
+      return new OpenAIProvider(config);
+    case "mistral":
+      return new MistralProvider(config);
+    case "openrouter":
+      return new OpenRouterProvider(config);
+    case "claude":
+      return new ClaudeProvider(config);
+    case "gemini":
+      return new GeminiProvider(config);
+    case "ollama":
+      return new OllamaProvider(config);
+  }
 }
+afterEach(() => vi.unstubAllGlobals());
 
-beforeEach(() => {
-  vi.restoreAllMocks();
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("consumeSseStream", () => {
-  it("reassembles a data frame split across two chunks", async () => {
-    const frames: string[] = [];
-    const first =
-      'data: {"choices":[{"delta":{"cont';
-    const second = 'ent":"Olá"}}]}\n\n';
-
-    await consumeSseStream({
-      body: streamFromChunks([
-        encoder.encode(first),
-        encoder.encode(second),
-      ]),
-      onFrame: (payload) => frames.push(payload),
-    });
-
-    expect(frames).toEqual(['{"choices":[{"delta":{"content":"Olá"}}]}']);
-  });
-
-  it("decodes a multi-byte character split across chunks", async () => {
-    const fullText =
-      'data: {"choices":[{"delta":{"content":"explicação"}}]}\n\n';
-    const bytes = encoder.encode(fullText);
-    // Split between the two bytes of "ç" (0xC3 0xA7) to force streaming decode.
-    let split = bytes.length;
-    for (let i = 0; i < bytes.length - 1; i += 1) {
-      if (bytes[i] === 0xc3 && bytes[i + 1] === 0xa7) split = i + 1;
-    }
-    expect(split).toBeLessThan(bytes.length);
-
+describe("stream framing", () => {
+  it("decodes UTF-8 split into bytes and joins multiline SSE events with CRLF", async () => {
     const frames: string[] = [];
     await consumeSseStream({
-      body: streamFromChunks([bytes.slice(0, split), bytes.slice(split)]),
-      onFrame: (payload) => frames.push(payload),
+      body: stream(
+        chunks(
+          ": hi\r\nevent: message\r\ndata: Olá\r\ndata: mundo\r\n\r\ndata: ignored"
+        )
+      ),
+      onFrame: (frame) => {
+        frames.push(frame);
+      },
     });
-
-    const parsed = JSON.parse(frames[0] ?? "") as {
-      choices?: Array<{ delta?: { content?: string } }>;
-    };
-    expect(parsed.choices?.[0]?.delta?.content).toBe("explicação");
+    expect(frames).toEqual(["Olá\nmundo"]);
   });
-
-  it("skips frames the wire format excludes", async () => {
+  it("delivers the last NDJSON record without a newline", async () => {
     const frames: string[] = [];
-    const chunks = [
-      ": keep-alive comment\n",
-      "\n",
-      'data: [DONE]\n',
-      'data: {"choices":[]}\n\n',
-    ].map((s) => encoder.encode(s));
-
-    await consumeSseStream({
-      body: streamFromChunks(chunks),
-      onFrame: (payload) => frames.push(payload),
+    await consumeNdjsonStream({
+      body: stream(chunks('{"a":1}\n\n{"a":2}')),
+      onFrame: (frame) => {
+        frames.push(frame);
+      },
     });
-
-    expect(frames).toEqual(["{\"choices\":[]}"]);
+    expect(frames).toEqual(['{"a":1}', '{"a":2}']);
   });
-
-  it("drops an unterminated final event (missing newline), per the SSE spec", async () => {
-    const frames: string[] = [];
-    await consumeSseStream({
-      body: streamFromChunks([encoder.encode('data: {"done:true"}')]),
-      onFrame: (payload) => frames.push(payload),
-    });
-    expect(frames).toEqual([]);
-  });
-
-  it("rejects when the stream fails mid-way", async () => {
-    const stream = new ReadableStream<Uint8Array>({
+  it("propagates a mid-stream network failure", async () => {
+    const body = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(encoder.encode('data: {"ok":true}\n\n'));
         setTimeout(() => controller.error(new Error("network drop")), 5);
       },
     });
-
-    await expect(
-      consumeSseStream({ body: stream, onFrame: () => {} })
-    ).rejects.toThrow("network drop");
-  });
-
-  it("rejects when the caller aborts mid-stream", async () => {
-    const controller = new AbortController();
-    const stream = new ReadableStream<Uint8Array>({
-      start(streamController) {
-        controller.signal.addEventListener(
-          "abort",
-          () => streamController.error(new Error("aborted")),
-          { once: true }
-        );
-      },
-    });
-
-    const pending = consumeSseStream({ body: stream, onFrame: () => {} });
-    controller.abort();
-
-    await expect(pending).rejects.toThrow("aborted");
+    await expect(consumeSseStream({ body, onFrame: () => {} })).rejects.toThrow(
+      "network drop"
+    );
   });
 });
 
-describe("httpStream (OpenAI-style mapping)", () => {
-  it("assembles streamed deltas and stops at [DONE]", async () => {
-    const chunks = [
-      'data: {"choices":[{"delta":{"content":"# Tít"}}]}\n',
-      'data: {"choices":[{"delta":{"content":"ulo"}}]}\n\n',
-      'data: {"choices":[{"delta":{"content":""}}]}\n',
-      'data: [DONE]\n\n',
-    ].map((s) => encoder.encode(s));
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(200, ...chunks)));
-
-    const tokens: string[] = [];
-    await httpStream(makeStreamRequest((chunk) => tokens.push(chunk)));
-
-    expect(tokens.join("")).toBe("# Título");
-  });
-
-  it("surfaces an error frame as a ProviderError", async () => {
-    const chunks = ['data: {"error":{"message":"quota excedida"}}\n\n'].map((s) =>
-      encoder.encode(s)
+describe("provider streaming", () => {
+  it.each(["openai", "mistral", "openrouter"] as const)(
+    "maps %s deltas and terminates",
+    async (id) => {
+      respond(
+        'data: {"choices":[{"delta":{"content":"Olá"}}]}\n\ndata: {"choices":[{"delta":{"content":"!"}}]}\n\ndata: [DONE]\n\ndata: {"choices":[{"delta":{"content":"wrong"}}]}\n\n'
+      );
+      const tokens: string[] = [];
+      await provider(id).chatStream(messages, options, (token) =>
+        tokens.push(token)
+      );
+      expect(tokens.join("")).toBe("Olá!");
+    }
+  );
+  it("maps Gemini candidates and does not put its key in the URL", async () => {
+    respond(
+      'data: {"candidates":[{"content":{"parts":[{"text":"Olá"}]}}]}\n\n'
     );
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(200, ...chunks)));
-
+    const tokens: string[] = [];
+    await provider("gemini").chatStream(messages, options, (token) =>
+      tokens.push(token)
+    );
+    expect(tokens).toEqual(["Olá"]);
+    const [url, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).not.toContain("fake-key");
+    expect((init?.headers as Record<string, string>)["x-goog-api-key"]).toBe(
+      "fake-key"
+    );
+  });
+  it("maps Claude deltas without AbortSignal.any", async () => {
+    const original = AbortSignal.any;
+    Object.defineProperty(AbortSignal, "any", {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      respond(
+        'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Olá"}}\n\ndata: {"type":"message_stop"}\n\n'
+      );
+      const tokens: string[] = [];
+      await provider("claude").chatStream(
+        messages,
+        options,
+        (token) => tokens.push(token),
+        undefined,
+        new AbortController().signal
+      );
+      expect(tokens).toEqual(["Olá"]);
+    } finally {
+      Object.defineProperty(AbortSignal, "any", {
+        value: original,
+        configurable: true,
+      });
+    }
+  });
+  it("maps Ollama NDJSON including text in the terminal record", async () => {
+    respond(
+      '{"message":{"content":"Olá"},"done":false}\n{"message":{"content":"!"},"done":true}'
+    );
+    const tokens: string[] = [];
+    await provider("ollama").chatStream(messages, options, (token) =>
+      tokens.push(token)
+    );
+    expect(tokens.join("")).toBe("Olá!");
+    const [, init] = vi.mocked(fetch).mock.calls[0]!;
+    expect(JSON.parse(String(init?.body)).options.temperature).toBe(0.2);
+  });
+  it("reports malformed frames and empty streams", async () => {
+    respond("data: not-json\n\n");
     await expect(
-      httpStream(makeStreamRequest(() => {}))
+      provider("openai").chatStream(messages, options, () => {})
+    ).rejects.toMatchObject({ code: "STREAM_PROTOCOL_ERROR" });
+    respond("data: [DONE]\n\n");
+    await expect(
+      provider("openai").chatStream(messages, options, () => {})
+    ).rejects.toMatchObject({ code: "EMPTY_RESPONSE" });
+  });
+  it("surfaces provider error frames", async () => {
+    respond('data: {"error":{"message":"quota exceeded"}}\n\n');
+    await expect(
+      provider("claude").chatStream(messages, options, () => {})
     ).rejects.toMatchObject({
-      provider: "openai",
       code: "STREAM_ERROR",
-      message: "quota excedida",
+      message: "quota exceeded",
     });
   });
+  it.each([401, 429, 500])(
+    "does not retry failed stream HTTP %s",
+    async (status) => {
+      const fetchMock = vi.fn(async () => new Response("failure", { status }));
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(
+        provider("openai").chatStream(messages, options, () => {})
+      ).rejects.toMatchObject({ status });
+      expect(fetchMock).toHaveBeenCalledOnce();
+    }
+  );
+  it("honours an already aborted signal without fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      provider("openai").chatStream(
+        messages,
+        options,
+        () => {},
+        undefined,
+        controller.signal
+      )
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
-  it("aborting during the stream rejects the request", async () => {
-    const abortController = new AbortController();
+  it("rejects an enabled proxy with no URL instead of contacting the provider directly", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const config = {
+      ...createDefaultProviderConfig("openai"),
+      apiKey: "fake",
+      useProxy: true,
+      proxyUrl: "",
+    };
+    const p = new OpenAIProvider(config);
+    await expect(p.chatStream(messages, options, () => {})).rejects.toThrow(
+      "Proxy URL is required"
+    );
+    await expect(p.chat(messages, options)).rejects.toThrow(
+      "Proxy URL is required"
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("aborts during streaming", async () => {
+    const controller = new AbortController();
     vi.stubGlobal(
       "fetch",
-      vi.fn((_: string, init?: { signal?: AbortSignal }) => {
-        const stream = new ReadableStream<Uint8Array>({
-          start(streamController) {
-            init?.signal?.addEventListener(
+      vi.fn((_url: string, init: RequestInit) =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start(c) {
+                init.signal?.addEventListener("abort", () =>
+                  c.error(new Error("aborted"))
+                );
+              },
+            })
+          )
+        )
+      )
+    );
+    const pending = provider("openai").chatStream(
+      messages,
+      options,
+      () => {},
+      undefined,
+      controller.signal
+    );
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("reports a stream timeout separately from caller cancellation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init.signal?.addEventListener(
               "abort",
-              () => streamController.error(new Error("aborted")),
+              () => reject(new Error("aborted")),
               { once: true }
             );
-          },
-        });
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          body: stream,
-          text: () => Promise.resolve(""),
-        } as unknown as Response);
-      })
+          })
+      )
     );
-
-    const pending = httpStream(
-      makeStreamRequest(() => {}, { signal: abortController.signal })
-    );
-    abortController.abort();
-
-    await expect(pending).rejects.toThrow("aborted");
-  });
-});
-
-describe("ClaudeProvider streaming", () => {
-  function claudeProvider(): ClaudeProvider {
-    return new ClaudeProvider({
-      ...createDefaultProviderConfig("claude"),
-      apiKey: "test-key",
-    } as ConstructorParameters<typeof ClaudeProvider>[0]);
-  }
-
-  it("emits tokens from content_block_delta and skips other frame types", async () => {
-    const chunks = [
-      'data: {"type":"message_start"}\n',
-      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Olá"}}\n\n',
-      'data: not-json-at-all\n', // malformed, must be skipped
-      'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" mundo"}}\n\n',
-      'data: {"type":"message_stop"}\n\n',
-    ].map((s) => encoder.encode(s));
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(200, ...chunks)));
-
-    const tokens: string[] = [];
-    await claudeProvider().chatStream(makeMessages(), makeOptions(), (chunk) =>
-      tokens.push(chunk)
-    );
-
-    expect(tokens).toEqual(["Olá", " mundo"]);
-  });
-
-  it("rejects on an error frame", async () => {
-    const chunks = ['data: {"error":{"message":"overloaded"}}\n\n'].map((s) =>
-      encoder.encode(s)
-    );
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(200, ...chunks)));
-
-    await expect(
-      claudeProvider().chatStream(makeMessages(), makeOptions(), () => {})
-    ).rejects.toMatchObject({
-      provider: "claude",
-      code: "STREAM_ERROR",
-      message: "overloaded",
-    });
-  });
-});
-
-describe("OpenAI provider through the shared stream", () => {
-  it("accumulates markdown tokens incrementally", async () => {
-    const chunks = [
-      'data: {"choices":[{"delta":{"content":"# Tít"}}]}\n',
-      'data: {"choices":[{"delta":{"content":"ulo"}}]}\n',
-      'data: {"choices":[{"delta":{"content":"\\n\\n- ponto 1"}}]}\n\n',
-      'data: [DONE]\n\n',
-    ].map((s) => encoder.encode(s));
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(200, ...chunks)));
-
-    const tokens: string[] = [];
-    const provider = new OpenAIProvider({
+    const p = new OpenAIProvider({
       ...createDefaultProviderConfig("openai"),
-      apiKey: "test-key",
-    } as ConstructorParameters<typeof OpenAIProvider>[0]);
-    await provider.chatStream(makeMessages(), makeOptions(), (chunk) =>
-      tokens.push(chunk)
-    );
+      apiKey: "fake",
+      timeout: 10,
+    });
+    await expect(
+      p.chatStream(messages, options, () => {})
+    ).rejects.toMatchObject({ code: "TIMEOUT" });
+  });
 
-    expect(tokens.join("")).toBe("# Título\n\n- ponto 1");
+  it("cancels an open reader when receiving a terminal event", async () => {
+    const cancel = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream({
+              start(c) {
+                c.enqueue(
+                  encoder.encode(
+                    'data: {"choices":[{"delta":{"content":"x"}}]}\n\ndata: [DONE]\n\n'
+                  )
+                );
+              },
+              cancel,
+            })
+          )
+      )
+    );
+    const tokens: string[] = [];
+    await provider("openai").chatStream(messages, options, (token) =>
+      tokens.push(token)
+    );
+    expect(tokens).toEqual(["x"]);
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });

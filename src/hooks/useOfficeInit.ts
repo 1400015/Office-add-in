@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import {
   getHost,
@@ -7,9 +7,10 @@ import {
 } from "../services/OfficeService";
 import { logger } from "../services/LoggerService";
 
-export function useOfficeInit(): void {
+export function useOfficeInit(): boolean {
   const setOfficeInfo = useAppStore((s) => s.setOfficeInfo);
   const hydrate = useAppStore((s) => s.hydrate);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,9 +29,15 @@ export function useOfficeInit(): void {
       }
     }
 
-    void init();
+    void init().catch((error: unknown) => {
+      logger.error("office", "Failed to initialize settings", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      if (!cancelled) setFailed(true);
+    });
     return () => {
       cancelled = true;
     };
   }, [setOfficeInfo, hydrate]);
+  return failed;
 }

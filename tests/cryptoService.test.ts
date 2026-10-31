@@ -93,6 +93,21 @@ describe("CryptoService", () => {
     expect(await CryptoService.decrypt(encrypted)).toBe("sk-real-secret");
   });
 
+  it("never falls back to the legacy key while a passphrase is locked", async () => {
+    await CryptoService.createPassphrase("correct horse");
+    CryptoService.lock();
+    await expect(CryptoService.encrypt("secret")).rejects.toThrow("locked");
+  });
+
+  it("keeps legacy ciphertext unavailable while a new passphrase is locked", async () => {
+    const legacy = await CryptoService.encrypt("legacy secret");
+    await CryptoService.createPassphrase("correct horse");
+    CryptoService.lock();
+    await expect(CryptoService.decrypt(legacy)).rejects.toThrow("locked");
+    expect(await CryptoService.unlock("correct horse")).toBe(true);
+    expect(await CryptoService.decrypt(legacy)).toBe("legacy secret");
+  });
+
   it("rejects a short passphrase", async () => {
     await expect(CryptoService.createPassphrase("short")).rejects.toThrow(
       /passphrase-short/

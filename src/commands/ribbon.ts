@@ -38,9 +38,15 @@ function handleCommand(action: RibbonCommand): void {
 export function registerRibbonActions(): void {
   if (typeof Office === "undefined" || !Office.actions) return;
   try {
-    Office.actions.associate("Summarize", () => handleCommand("Summarize"));
-    Office.actions.associate("Translate", () => handleCommand("Translate"));
-    Office.actions.associate("Analyse", () => handleCommand("Analyse"));
+    for (const command of ["Summarize", "Translate", "Analyse"] as const) {
+      Office.actions.associate(command, (event: Office.AddinCommands.Event) => {
+        try {
+          handleCommand(command);
+        } finally {
+          event.completed();
+        }
+      });
+    }
     logger.info("commands", "Ribbon actions registered");
   } catch (error) {
     logger.warn("commands", "Could not register ribbon actions", {

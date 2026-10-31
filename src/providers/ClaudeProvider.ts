@@ -8,7 +8,7 @@ import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
-import { consumeSseStream } from "../services/sse";
+import { httpStream, parseStreamPayload } from "../services/HttpService";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
 
 interface ClaudeResponse {
@@ -115,56 +115,37 @@ export class ClaudeProvider extends BaseProvider {
       model: options.model,
     });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
-    const combined = signal
-      ? AbortSignal.any([controller.signal, signal])
-      : controller.signal;
-    try {
-      const response = await fetch(this.buildUrl(this.chatPath()), {
-        method: "POST",
-        headers: this.requestHeaders(),
-        body: JSON.stringify(body),
-        signal: combined,
-      });
-      if (!response.ok || !response.body) {
-        const text = await response.text().catch(() => "");
-        throw new Error(
-          `Claude stream failed with status ${response.status}: ${text.slice(0, 300)}`
-        );
-      }
-      await consumeSseStream({
-        body: response.body,
-        onFrame: (payload) => {
-          let parsed: {
-            type?: string;
-            delta?: { type?: string; text?: string };
-            error?: { message?: string };
-          };
-          try {
-            parsed = JSON.parse(payload) as typeof parsed;
-          } catch {
-            return; // Malformed SSE frame, skip it.
-          }
-          if (parsed.error?.message) {
-            throw new ProviderError(
-              this.id,
-              "STREAM_ERROR",
-              parsed.error.message
-            );
-          }
-          if (parsed.type === "content_block_delta") {
-            const chunk = parsed.delta?.text;
-            if (chunk) onToken(chunk);
-          }
-        },
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
-
-  override async getModels() {
-    return super.getModels();
+    let emitted = false;
+    await httpStream({
+      url: this.buildUrl(this.chatPath()),
+      headers: this.requestHeaders(),
+      body,
+      timeout: this.config.timeout,
+      provider: this.id,
+      format: "sse",
+      signal,
+      onPayload: (payload) => {
+        const parsed = parseStreamPayload<{
+          type?: string;
+          delta?: { type?: string; text?: string };
+        }>(payload, this.id);
+        if (
+          parsed.type === "content_block_delta" &&
+          parsed.delta?.type === "text_delta" &&
+          parsed.delta.text
+        ) {
+          emitted = true;
+          onToken(parsed.delta.text);
+        }
+        if (parsed.type === "message_stop") return "stop";
+        return undefined;
+      },
+    });
+    if (!emitted)
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Claude returned an empty response"
+      );
   }
 }

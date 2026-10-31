@@ -4,6 +4,7 @@ async function loadOfficeService() {
   return {
     getHost: mod.getHost,
     getPlatform: mod.getPlatform,
+    getContext: mod.getContext,
     isOfficeReady: mod.isOfficeReady,
     isOllamaCompatible: mod.isOllamaCompatible,
     insertTextAtSelection: mod.insertTextAtSelection,
@@ -145,6 +146,58 @@ describe("isOllamaCompatible", () => {
   it("returns false on web", () => {
     installOffice("Word", "OfficeOnline");
     expect(svc.isOllamaCompatible()).toBe(false);
+  });
+});
+
+describe("PowerPoint context", () => {
+  function installSlide(sync: () => Promise<void> = async () => {}): void {
+    vi.stubGlobal("PowerPoint", {
+      run: async (cb: (ctx: unknown) => Promise<unknown>) =>
+        cb({
+          presentation: {
+            getSelectedSlides: () => ({
+              load: () => {},
+              items: [
+                {
+                  shapes: {
+                    items: [
+                      { textFrame: { textRange: { text: "x".repeat(60001) } } },
+                    ],
+                  },
+                },
+              ],
+            }),
+          },
+          sync,
+        }),
+    });
+  }
+
+  it("reports truncation when the slide exceeds the context budget", async () => {
+    installOffice("PowerPoint", "PC");
+    installSlide();
+    const reportTruncation = vi.fn();
+    const context = await svc.getContext({
+      signal: new AbortController().signal,
+      assertCurrent: () => {},
+      reportTruncation,
+    });
+    expect(reportTruncation).toHaveBeenCalledOnce();
+    expect(context.selectionText).toContain("truncated 1 chars");
+  });
+
+  it("propagates cancellation while loading slide text", async () => {
+    installOffice("PowerPoint", "PC");
+    const controller = new AbortController();
+    installSlide(async () => {
+      controller.abort();
+    });
+    const assertCurrent = () => {
+      if (controller.signal.aborted) throw new Error("cancelled");
+    };
+    await expect(
+      svc.getContext({ signal: controller.signal, assertCurrent })
+    ).rejects.toThrow("cancelled");
   });
 });
 

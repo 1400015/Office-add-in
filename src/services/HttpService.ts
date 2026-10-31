@@ -1,8 +1,9 @@
 import { RETRY_ATTEMPTS, RETRY_BASE_DELAY_MS } from "../constants";
 import { proxyFailure } from "../proxy/failures";
 import { ProviderError, type ProviderId } from "../types";
-import { consumeSseStream } from "./sse";
+import { consumeSseStream, consumeNdjsonStream } from "./sse";
 import { logger } from "./LoggerService";
+import { abortableSleep, abortError, requestSignal } from "./abort";
 
 export interface HttpRequest {
   url: string;
@@ -14,60 +15,27 @@ export interface HttpRequest {
   signal?: AbortSignal;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isRetryable(status?: number): boolean {
-  if (status === undefined) return true;
-  return status === 429 || status >= 500;
-}
-
-/**
- * Whether another attempt could change the outcome. The proxy's own failures
- * are deterministic (missing configuration, rejected origin, rejected
- * upstream), so they surface immediately instead of after the full backoff.
- */
 export function isRetryableError(error: unknown): boolean {
   if (error instanceof Error && proxyFailure(error.message)) return false;
   const status = error instanceof ProviderError ? error.status : undefined;
-  return isRetryable(status);
-}
-
-/**
- * Combines abort signals without AbortSignal.any(), which is missing from
- * older WebViews used by Office (notably macOS before 14.4).
- */
-function combineSignals(signals: Array<AbortSignal | undefined>): AbortSignal {
-  const controller = new AbortController();
-  const abort = (): void => controller.abort();
-  for (const signal of signals) {
-    if (!signal) continue;
-    if (signal.aborted) {
-      controller.abort();
-      break;
-    }
-    signal.addEventListener("abort", abort, { once: true });
-  }
-  return controller.signal;
+  return status === undefined || status === 429 || status >= 500;
 }
 
 export async function httpRequest<T>(req: HttpRequest): Promise<T> {
   let lastError: unknown;
-
   for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), req.timeout);
-    const combinedSignal = combineSignals([controller.signal, req.signal]);
-
+    if (req.signal?.aborted) throw abortError();
+    const request = requestSignal(req.timeout, req.signal);
     try {
       const response = await fetch(req.url, {
         method: req.method ?? "GET",
         headers: req.headers,
         body: req.body === undefined ? undefined : JSON.stringify(req.body),
-        signal: combinedSignal,
+        signal: request.signal,
       });
-
+      if (req.signal?.aborted) throw abortError();
+      if (request.timedOut())
+        throw new ProviderError(req.provider, "TIMEOUT", "Request timeout");
       if (!response.ok) {
         const text = await response.text().catch(() => "");
         throw new ProviderError(
@@ -77,45 +45,42 @@ export async function httpRequest<T>(req: HttpRequest): Promise<T> {
           response.status
         );
       }
-
-      return (await response.json()) as T;
+      const result = (await response.json()) as T;
+      if (req.signal?.aborted) throw abortError();
+      if (request.timedOut())
+        throw new ProviderError(req.provider, "TIMEOUT", "Request timeout");
+      return result;
     } catch (error) {
-      lastError = error;
-      clearTimeout(timeoutId);
-
-      // A caller cancellation is intentional: never retry it.
-      if (req.signal?.aborted) break;
-
-      const status = error instanceof ProviderError ? error.status : undefined;
-      const retryable = isRetryableError(error);
-
-      if (attempt < RETRY_ATTEMPTS && retryable) {
+      if (req.signal?.aborted) throw abortError();
+      lastError = request.timedOut()
+        ? new ProviderError(req.provider, "TIMEOUT", "Request timeout")
+        : error;
+      if (attempt < RETRY_ATTEMPTS && isRetryableError(lastError)) {
         const delay = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
         logger.warn(
           "http",
           `Attempt ${attempt} failed, retrying in ${delay}ms`,
           {
-            url: req.url,
-            status,
-            error: error instanceof Error ? error.message : String(error),
+            status:
+              lastError instanceof ProviderError ? lastError.status : undefined,
+            error:
+              lastError instanceof Error
+                ? lastError.message
+                : String(lastError),
           }
         );
-        await sleep(delay);
+        request.dispose();
+        await abortableSleep(delay, req.signal);
         continue;
       }
-
       break;
     } finally {
-      clearTimeout(timeoutId);
+      request.dispose();
     }
   }
-
-  if (lastError instanceof ProviderError) {
-    throw lastError;
-  }
-  if (lastError instanceof Error) {
+  if (lastError instanceof ProviderError) throw lastError;
+  if (lastError instanceof Error)
     throw new ProviderError(req.provider, "NETWORK_ERROR", lastError.message);
-  }
   throw new ProviderError(
     req.provider,
     "UNKNOWN_ERROR",
@@ -129,23 +94,58 @@ export interface StreamRequest {
   body: unknown;
   timeout: number;
   provider: ProviderId;
-  onToken: (chunk: string) => void;
+  format: "sse" | "ndjson";
+  onPayload: (payload: string) => void | "stop";
   signal?: AbortSignal;
 }
 
-export async function httpStream(req: StreamRequest): Promise<void> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), req.timeout);
-  const combinedSignal = combineSignals([controller.signal, req.signal]);
+export function parseStreamPayload<T>(
+  payload: string,
+  provider: ProviderId
+): T {
+  let parsed: T;
+  try {
+    parsed = JSON.parse(payload) as T;
+  } catch {
+    throw new ProviderError(
+      provider,
+      "STREAM_PROTOCOL_ERROR",
+      "Invalid stream payload"
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ProviderError(
+      provider,
+      "STREAM_PROTOCOL_ERROR",
+      "Invalid stream payload"
+    );
+  }
+  const error = (parsed as { error?: { message?: string } | string } | null)
+    ?.error;
+  if (error)
+    throw new ProviderError(
+      provider,
+      "STREAM_ERROR",
+      typeof error === "string"
+        ? error
+        : (error.message ?? "Provider stream failed")
+    );
+  return parsed;
+}
 
+export async function httpStream(req: StreamRequest): Promise<void> {
+  if (req.signal?.aborted) throw abortError();
+  const request = requestSignal(req.timeout, req.signal);
   try {
     const response = await fetch(req.url, {
       method: "POST",
       headers: req.headers,
       body: JSON.stringify(req.body),
-      signal: combinedSignal,
+      signal: request.signal,
     });
-
+    if (req.signal?.aborted) throw abortError();
+    if (request.timedOut())
+      throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
     if (!response.ok || !response.body) {
       const text = await response.text().catch(() => "");
       throw new ProviderError(
@@ -155,30 +155,27 @@ export async function httpStream(req: StreamRequest): Promise<void> {
         response.status
       );
     }
-
-    await consumeSseStream({
+    const source = {
       body: response.body,
-      onFrame: (payload) => {
-        try {
-          const parsed = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string } }>;
-            error?: { message?: string };
-          };
-          if (parsed.error?.message) {
-            throw new ProviderError(
-              req.provider,
-              "STREAM_ERROR",
-              parsed.error.message
-            );
-          }
-          const chunk = parsed.choices?.[0]?.delta?.content;
-          if (chunk) req.onToken(chunk);
-        } catch (error) {
-          if (error instanceof ProviderError) throw error;
-        }
+      onFrame: (payload: string) => {
+        if (req.signal?.aborted) throw abortError();
+        if (request.timedOut())
+          throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
+        if (payload === "[DONE]") return "stop";
+        return req.onPayload(payload);
       },
-    });
+    };
+    if (req.format === "ndjson") await consumeNdjsonStream(source);
+    else await consumeSseStream(source);
+    if (req.signal?.aborted) throw abortError();
+    if (request.timedOut())
+      throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
+  } catch (error) {
+    if (req.signal?.aborted) throw abortError();
+    if (request.timedOut())
+      throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
+    throw error;
   } finally {
-    clearTimeout(timeoutId);
+    request.dispose();
   }
 }

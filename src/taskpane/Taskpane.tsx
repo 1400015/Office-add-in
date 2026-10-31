@@ -21,7 +21,6 @@ const TemplatesView = lazy(() =>
   import("./TemplatesView").then((m) => ({ default: m.TemplatesView }))
 );
 import { useAppStore } from "../store/useAppStore";
-import { useChat } from "../hooks/useChat";
 import { useOfficeInit } from "../hooks/useOfficeInit";
 import { useRibbonCommands } from "../hooks/useRibbonCommands";
 import type { AppView } from "../types";
@@ -31,10 +30,9 @@ export function Taskpane(): JSX.Element {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const startNewChat = useAppStore((s) => s.startNewChat);
-  const { stopStreaming } = useChat();
   const language = useAppStore((s) => s.language);
 
-  useOfficeInit();
+  const initializationFailed = useOfficeInit();
   useRibbonCommands();
 
   useEffect(() => {
@@ -44,11 +42,20 @@ export function Taskpane(): JSX.Element {
   }, [language, i18n]);
 
   const onNewChat = (): void => {
-    // Abort first: a streaming answer must not land in the new conversation.
-    stopStreaming();
     startNewChat();
     setView("chat");
   };
+
+  if (initializationFailed) {
+    return (
+      <div className="empty-state">
+        <div>{t("errors.settingsLoad")}</div>
+        <Button appearance="primary" onClick={() => window.location.reload()}>
+          {t("common.reload")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="app">

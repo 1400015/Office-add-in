@@ -14,6 +14,7 @@ import {
   render,
   screen,
   waitFor,
+  act,
 } from "@testing-library/react";
 import "../src/i18n";
 import { SettingsView } from "../src/taskpane/SettingsView";
@@ -24,9 +25,11 @@ import {
   PROVIDER_ORDER,
 } from "../src/config/providers";
 import type { ProviderConfig, ProviderId } from "../src/types";
+import { ModelService } from "../src/services/ModelService";
 
 vi.mock("../src/services/ModelService", () => ({
   ModelService: {
+    probeConnection: vi.fn(async () => ({ modelCount: 2 })),
     listModels: vi.fn(async () => [
       { id: "m1", name: "m1", provider: "mistral" },
       { id: "m2", name: "m2", provider: "mistral" },
@@ -72,6 +75,8 @@ beforeEach(() => {
     theme: "light",
     language: "en",
     secretsLocked: false,
+    hydrated: true,
+    vaultBusy: false,
     passphraseEnabled: false,
     createPassphrase: vi.fn(),
     unlockSecrets: vi.fn(async () => true),
@@ -91,6 +96,35 @@ afterEach(() => {
 });
 
 describe("SettingsView", () => {
+  it("hides editable settings while the vault is busy", () => {
+    useAppStore.setState({ hydrated: true, vaultBusy: true });
+    render(<SettingsView />);
+    expect(screen.queryByText("Save")).toBeNull();
+    expect(screen.queryByText(PROVIDER_DEFINITIONS.mistral.name)).toBeNull();
+    expect(screen.getByText("Loading...")).toBeTruthy();
+  });
+
+  it("discards a probe response when the vault becomes busy", async () => {
+    let finish!: (value: { modelCount: number }) => void;
+    vi.mocked(ModelService.probeConnection).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    render(<SettingsView />);
+    fireEvent.click(
+      screen.getByRole("button", { name: PROVIDER_DEFINITIONS.mistral.name })
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Test connection" })
+    );
+    act(() => useAppStore.setState({ vaultBusy: true }));
+    await act(async () => finish({ modelCount: 2 }));
+    act(() => useAppStore.setState({ vaultBusy: false }));
+    expect(screen.queryByText("OK (2 models)")).toBeNull();
+  });
+
   it("renders the general and providers sections with every provider", () => {
     render(<SettingsView />);
 

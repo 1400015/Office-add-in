@@ -36,6 +36,6 @@ export default [
     },
   },
   {
-    ignores: ["dist/", "node_modules/", "*.config.js", "scripts/"],
+    ignores: ["dist/", "dist-proxy/", "node_modules/", "*.config.js", "scripts/"],
   },
 ];

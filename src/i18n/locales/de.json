@@ -33,7 +33,9 @@
     "provider": "Anbieter",
     "model": "Modell",
     "reasoning": "Denkmodus",
-    "refreshModels": "Modelle aktualisieren"
+    "refreshModels": "Modelle aktualisieren",
+    "modelsFallback": "Die Liste enthält Vorschläge oder gespeicherte Ergebnisse, da der Anbieter nicht erreichbar ist.",
+    "noModels": "Für diesen Anbieter sind keine Modelle verfügbar."
   },
   "settings": {
     "providers": "Anbieter",
@@ -71,7 +73,8 @@
     },
     "language": "Sprache",
     "ollamaWarning": "Ollama läuft auf localhost und funktioniert nur in Office Desktop. In Office im Web blockiert die Browsersicherheit lokale Verbindungen.",
-    "corsWarning": "Die API dieses Anbieters erlaubt keine direkten Browseraufrufe (kein CORS). Aktivieren Sie die Proxy-Option oder verwenden Sie einen BFF-Endpunkt."
+    "corsWarning": "Die API dieses Anbieters erlaubt keine direkten Browseraufrufe (kein CORS). Aktivieren Sie die Proxy-Option oder verwenden Sie einen BFF-Endpunkt.",
+    "connectionSuccess": "Verbindung überprüft."
   },
   "quickActions": {
     "word": {
@@ -155,6 +158,7 @@
     "noApiKey": "Konfigurieren Sie zuerst einen API-Schlüssel in den Einstellungen.",
     "noModel": "Wählen Sie zuerst ein Modell.",
     "uiCrash": "Das Add-in ist auf einen unerwarteten Fehler gestoßen. Laden Sie neu, um fortzufahren.",
+    "settingsLoad": "Die Einstellungen konnten nicht geladen werden. Laden Sie die Seite erneut.",
     "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "officeNotReady": "Office ist noch nicht bereit.",
     "ollamaOffline": "Ollama ist nicht erreichbar. Stellen Sie sicher, dass es läuft: Führen Sie 'ollama serve' in einem Terminal aus. Wenn der Fehler bleibt, legen Sie OLLAMA_ORIGINS fest, um die Herkunft dieses Add-ins zuzulassen.",
@@ -174,7 +178,14 @@
     "badAiFormat": "Das Modell hat nicht das erwartete Format zurückgegeben. Versuchen Sie es erneut.",
     "proxyConfig": "Der Proxy ist nicht konfiguriert. Legen Sie ALLOWED_ORIGINS auf dem Worker fest, bevor Sie ihn in die Produktion nehmen.",
     "proxyOrigin": "Der Proxy hat den Ursprung dieser Erweiterung abgelehnt. Tragen Sie den Ursprung der Erweiterung in ALLOWED_ORIGINS beim Worker ein.",
-    "proxyUpstream": "Der Proxy leitet nicht an diesen Anbieter weiter. Prüfen Sie den Endpunkt in den Einstellungen; nur Anbieter auf der Liste werden zugelassen."
+    "proxyUpstream": "Der Proxy leitet nicht an diesen Anbieter weiter. Prüfen Sie den Endpunkt in den Einstellungen; nur Anbieter auf der Liste werden zugelassen.",
+    "editConflict": "Der ursprüngliche Inhalt wurde geändert. Die Antwort wurde nicht eingefügt und ist im Chat verfügbar.",
+    "conflictSaveFailed": "Der ursprüngliche Inhalt wurde geändert, daher wurde die Antwort nicht eingefügt. Sie ist im Chat sichtbar, konnte aber nicht im Verlauf gespeichert werden.",
+    "selectionTooLong": "Die Auswahl überschreitet 60.000 Zeichen. Wähle einen kürzeren Abschnitt.",
+    "emptyResponse": "Der Anbieter hat eine leere Antwort geliefert. Versuche es erneut.",
+    "locked": "Entsperre die Passphrase, bevor du den Assistenten verwendest.",
+    "contextTruncated": "Nur ein Teil des ausgewählten Inhalts wurde gesendet, da das Kontextlimit überschritten wurde.",
+    "notReady": "Die Einstellungen werden noch geladen. Bitte warte einen Moment."
   },
   "common": {
     "loading": "Wird geladen ...",

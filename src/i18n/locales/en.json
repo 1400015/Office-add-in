@@ -33,7 +33,9 @@
     "provider": "Provider",
     "model": "Model",
     "reasoning": "Reasoning",
-    "refreshModels": "Refresh models"
+    "refreshModels": "Refresh models",
+    "modelsFallback": "The current model list contains suggestions or cached results because the provider could not be reached.",
+    "noModels": "No models are available for this provider."
   },
   "settings": {
     "providers": "Providers",
@@ -71,7 +73,8 @@
     },
     "language": "Language",
     "ollamaWarning": "Ollama runs on localhost and only works in Office Desktop. In Office on the web, browser security blocks local connections.",
-    "corsWarning": "This provider's API does not allow direct browser calls (no CORS). Enable the proxy option or use a BFF endpoint."
+    "corsWarning": "This provider's API does not allow direct browser calls (no CORS). Enable the proxy option or use a BFF endpoint.",
+    "connectionSuccess": "Connection verified."
   },
   "quickActions": {
     "word": {
@@ -163,6 +166,7 @@
     "rateLimited": "Rate limit reached. Wait a moment before trying again.",
     "auth": "Authentication failed. Check your API key in Settings.",
     "uiCrash": "The add-in hit an unexpected error. Reload to continue.",
+    "settingsLoad": "Settings could not be loaded. Reload to try again.",
     "insertFailed": "Could not insert the answer.",
     "noText": "There is no text to work on.",
     "noSelection": "Select some text first.",
@@ -174,7 +178,14 @@
     "badAiFormat": "The model did not return the expected format. Try again.",
     "proxyConfig": "The proxy is not configured. Set ALLOWED_ORIGINS on the worker before deploying it to production.",
     "proxyOrigin": "The proxy rejected this add-in's origin. Add the add-in origin to ALLOWED_ORIGINS on the worker.",
-    "proxyUpstream": "The proxy does not forward to this provider. Check the endpoint in Settings; only allowlisted providers can be proxied."
+    "proxyUpstream": "The proxy does not forward to this provider. Check the endpoint in Settings; only allowlisted providers can be proxied.",
+    "editConflict": "The original content changed. The response was not applied; it is available in the chat.",
+    "conflictSaveFailed": "The original content changed, so the response was not applied. It is visible in the chat but could not be saved to history.",
+    "selectionTooLong": "The selection exceeds 60,000 characters. Select a shorter passage.",
+    "emptyResponse": "The provider returned an empty response. Try again.",
+    "locked": "Unlock the passphrase before using the assistant.",
+    "contextTruncated": "Only part of the selected content was sent because it exceeds the context limit.",
+    "notReady": "Settings are still loading. Please wait."
   },
   "common": {
     "loading": "Loading...",

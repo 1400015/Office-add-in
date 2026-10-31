@@ -17,6 +17,15 @@ function storage(): OfficeRuntime.Storage {
 
 export const StorageService = {
   async getItem<T>(key: string): Promise<T | null> {
+    if (typeof OfficeRuntime === "undefined") return null;
+    const revision = CryptoService.getRevision();
+    if (
+      ENCRYPTED_KEYS.has(key) &&
+      !CryptoService.isUnlocked() &&
+      (await CryptoService.hasPassphrase())
+    ) {
+      throw new StorageLockedError();
+    }
     let value: unknown;
     try {
       value = await storage().getItem(key);
@@ -24,7 +33,12 @@ export const StorageService = {
       logger.warn("storage", `Failed to read key ${key}`, {
         error: error instanceof Error ? error.message : String(error),
       });
+      if (ENCRYPTED_KEYS.has(key)) throw error;
       return null;
+    }
+
+    if (ENCRYPTED_KEYS.has(key) && revision !== CryptoService.getRevision()) {
+      throw new StorageLockedError();
     }
 
     if (value === undefined || value === null) return null;
@@ -42,8 +56,12 @@ export const StorageService = {
         logger.warn("storage", `Failed to decrypt key ${key}`, {
           error: error instanceof Error ? error.message : String(error),
         });
-        return null;
+        throw error;
       }
+    }
+
+    if (ENCRYPTED_KEYS.has(key) && revision !== CryptoService.getRevision()) {
+      throw new StorageLockedError();
     }
 
     try {
@@ -52,23 +70,31 @@ export const StorageService = {
       logger.warn("storage", `Failed to parse key ${key}`, {
         error: error instanceof Error ? error.message : String(error),
       });
+      if (ENCRYPTED_KEYS.has(key)) throw error;
       return null;
     }
   },
 
   async setItem(key: string, value: unknown): Promise<void> {
-    if (
-      ENCRYPTED_KEYS.has(key) &&
-      !CryptoService.isUnlocked() &&
-      (await CryptoService.hasPassphrase())
-    ) {
-      // Writing now would replace the sealed payload with a different key.
-      throw new StorageLockedError();
-    }
+    const revision = CryptoService.getRevision();
+    const guarded = ENCRYPTED_KEYS.has(key);
+    const assertWritable = async (): Promise<boolean> => {
+      try {
+        return await CryptoService.assertWritable(revision);
+      } catch (error) {
+        if (error instanceof Error && error.message === "locked")
+          throw new StorageLockedError();
+        throw error;
+      }
+    };
+    const protectedVault = guarded ? await assertWritable() : false;
     let text = JSON.stringify(value);
-    if (ENCRYPTED_KEYS.has(key) && (await CryptoService.isAvailable())) {
+    if (guarded && protectedVault) {
+      text = await CryptoService.encrypt(text);
+    } else if (guarded && (await CryptoService.isAvailable())) {
       text = await CryptoService.encrypt(text);
     }
+    if (guarded) await assertWritable();
     await storage().setItem(key, text);
   },
 
