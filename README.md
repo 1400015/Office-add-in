@@ -75,8 +75,10 @@ npm run stop        # remove dev certificates
 ```
 
 > **Note on `npm run validate`**: the manifest is validated against Microsoft's
-> schema, including the `VersionOverrides` block. CI runs this on every push, so
-> packaging regressions are caught before a release.
+> schema, including the `VersionOverrides` block. The command contacts Microsoft's
+> validation service and exits nonzero on rejection, timeout, network failure or
+> an invalid response. It respects `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+> CI runs this on every push; service acceptance does not replace testing in Office.
 
 ## Sideloading
 
@@ -109,8 +111,10 @@ Deploy `manifest.xml` through the Microsoft 365 admin center (**Settings > Integ
 Open the **Settings** tab inside the add-in:
 
 - Add an **API key** and optional **endpoint** per provider.
-- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require the **proxy** in [`proxy/worker.ts`](proxy/worker.ts). Deploy it with `npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"` and paste the worker origin into **Proxy URL**. The add-in sends `X-OUAI-Upstream`; the worker only forwards to allowlisted provider hosts and adds CORS. The API key stays in the `Authorization` header, never in the URL. A plain deploy is already production (`ENVIRONMENT` is set in `wrangler.toml`): the worker answers HTTP 500 until `ALLOWED_ORIGINS` is the origin that hosts the add-in, refuses requests without an `Origin` header, and rejects every other browser origin. Local testing uses `npx wrangler dev --env dev`, which allows only `https://localhost:3000`. The taskpane translates each of these rejections into an actionable message.
+- Providers whose APIs do not allow direct browser calls (**OpenAI**, **Claude**) require the **proxy** in [`proxy/worker.ts`](proxy/worker.ts). Deploy it with `npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"` and paste the worker origin into **Proxy URL**. The add-in sends `X-OUAI-Upstream`; the worker only forwards to allowlisted provider hosts and adds CORS. API keys are sent in the provider's authentication header, never in the URL. A plain deploy is already production (`ENVIRONMENT` is set in `wrangler.toml`): the worker answers HTTP 500 until `ALLOWED_ORIGINS` is the origin that hosts the add-in, refuses requests without an `Origin` header, and rejects every other browser origin. Local testing uses `npx wrangler dev --env dev`, which allows only `https://localhost:3000`. The taskpane translates each of these rejections into an actionable message.
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
+- **Test connection** contacts the configured endpoint and checks authentication where applicable. It does not generate a response or verify available quota. Suggested model lists may be shown when listing is unavailable; those suggestions do not prove connectivity. An Ollama server with no installed models returns an empty list.
+- Word replacement actions reject selections longer than 60,000 characters. If the original Word, Excel or PowerPoint content changes while an AI response is being generated, the response is shown in chat without overwriting the changed content.
 
 > ⚠️ **Security note**: Without a passphrase, API keys are only obfuscated in `OfficeRuntime.storage`. Set a passphrase in Settings to encrypt keys and chat history with a key that stays in memory for the session (it is not stored). Secrets are masked in the UI and redacted from logs.
 
@@ -118,7 +122,7 @@ Open the **Settings** tab inside the add-in:
 
 The UI is fully translated into **English, Portuguese, Spanish, French and German** with i18next and react-i18next.
 
-- **Bundles**: [`src/i18n/locales/`](src/i18n/locales/) holds `en.json`, `pt.json`, `es.json`, `fr.json` and `de.json`, each with the same key set (147 leaf keys). They are registered in [`src/i18n/index.ts`](src/i18n/index.ts) with `fallbackLng: "en"`. On first run the UI language is detected from the browser/Office language (`detectLanguage()`), falling back to English; a language saved in Settings overrides the detection on start.
+- **Bundles**: [`src/i18n/locales/`](src/i18n/locales/) holds `en.json`, `pt.json`, `es.json`, `fr.json` and `de.json`, each with the same key set. They are registered in [`src/i18n/index.ts`](src/i18n/index.ts) with `fallbackLng: "en"`. On first run the UI language is detected from the browser/Office language (`detectLanguage()`), falling back to English; a language saved in Settings overrides the detection on start.
 - **Usage**: components call `t("section.key")`. Dynamic keys such as ``t(`languages.${code}`)`` must resolve to an existing section of the bundle.
 - **Plurals**: keys that vary with a count use the i18next `_one` / `_other` suffixes (e.g. `history.messageCount_one`) and are called with `t("history.messageCount", { count })`.
 - **Errors**: services return `errors.*` keys via [`src/services/ErrorService.ts`](src/services/ErrorService.ts) and the UI translates them at render time, so raw provider or Office.js messages are never shown as-is.
@@ -135,7 +139,7 @@ The UI is fully translated into **English, Portuguese, Spanish, French and Germa
 | OpenAI / Claude requests fail in the browser | CORS. Use the proxy option with a BFF endpoint (see Configuration) or a CORS-enabled endpoint.                                                                   |
 | Ollama: "Cannot reach Ollama"                | Make sure Ollama is running (`ollama serve`). If requests are blocked, set `OLLAMA_ORIGINS` to allow the taskpane origin.                                        |
 | Ollama in Office on the web                  | Not supported — browsers block `http://localhost` from an HTTPS page. Use Office Desktop.                                                                        |
-| Provider returns 429                         | Rate limit. The add-in retries automatically (3 attempts, exponential backoff); wait a moment if it still fails.                                                 |
+| Provider returns 429                         | Rate limit. JSON requests retry automatically (3 attempts, exponential backoff); streaming is not automatically retried. Wait before trying again.                |
 | Request times out                            | Increase the timeout in **Settings** for that provider.                                                                                                          |
 | Bundle/source maps                           | Production builds omit source maps by default; build with `SOURCEMAP=true npm run build` to emit them.                                                           |
 
@@ -145,7 +149,7 @@ The UI is fully translated into **English, Portuguese, Spanish, French and Germa
 - **Providers** implement a common contract (`BaseProvider`): `chat`, `chatStream`, `getModels`, `summarize`, `translate`, `analyse`. New providers only need a new class + one line in `ProviderFactory`.
 - **Request shaping**: `config/modelParams.ts` adapts the request body to each model family (temperature support, output-token field and limit), so reasoning models and strict families do not fail with 400 errors.
 - **Reasoning** is abstract: the selected level is translated into a system-prompt strategy per provider (`config/reasoningProfiles.ts`).
-- **Retry**: HTTP requests retry automatically on 429/5xx with exponential backoff (3 attempts).
+- **Retry**: JSON HTTP requests retry automatically on 429/5xx with exponential backoff (3 attempts). Streams are not retried automatically.
 - **Logging**: structured in-memory log ring buffer (`services/LoggerService.ts`).
 
 ## License

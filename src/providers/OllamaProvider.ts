@@ -6,8 +6,8 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
-import { httpRequest } from "../services/HttpService";
-import { logger } from "../services/LoggerService";
+import { httpStream, parseStreamPayload } from "../services/HttpService";
+import { ProviderError } from "../types";
 
 interface OllamaResponse {
   choices?: Array<{ message?: { content?: string } }>;
@@ -53,11 +53,11 @@ export class OllamaProvider extends BaseProvider {
     return {
       model: options.model,
       messages,
-      ...(params.supportsTemperature
-        ? { temperature: options.temperature }
-        : {}),
       options: {
         num_predict: clampMaxTokens(options.maxTokens, params.maxTokensLimit),
+        ...(params.supportsTemperature
+          ? { temperature: options.temperature }
+          : {}),
       },
       stream: false,
     };
@@ -75,27 +75,46 @@ export class OllamaProvider extends BaseProvider {
     return content;
   }
 
-  override async getModels() {
-    try {
-      const data = await httpRequest<{ models?: Array<{ name: string }> }>({
-        url: this.buildUrl("/api/tags"),
-        method: "GET",
-        headers: this.requestHeaders(),
-        timeout: Math.min(this.config.timeout, 15000),
-        provider: this.id,
-      });
-      const models = (data.models ?? []).map((m) => ({
-        id: m.name,
-        name: m.name,
-        provider: this.id,
-      }));
-      if (models.length > 0) return models;
-    } catch (error) {
-      logger.warn("provider", "ollama: model listing failed, using defaults", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-    return super.getModels();
+  override async chatStream(
+    messages: ChatMessage[],
+    options: ChatOptions,
+    onToken: (chunk: string) => void,
+    context?: import("../types").ChatContext,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const normalized = this.normalizeMessages(messages, options);
+    const withContext = context?.selectionText
+      ? this.attachContext(normalized, context)
+      : normalized;
+    const body = { ...this.buildChatBody(withContext, options), stream: true };
+    let emitted = false;
+    await httpStream({
+      url: this.buildUrl(this.chatPath()),
+      headers: this.requestHeaders(),
+      body,
+      timeout: this.config.timeout,
+      provider: this.id,
+      format: "ndjson",
+      signal,
+      onPayload: (payload) => {
+        const frame = parseStreamPayload<{
+          message?: { content?: string };
+          done?: boolean;
+        }>(payload, this.id);
+        if (frame.message?.content) {
+          emitted = true;
+          onToken(frame.message.content);
+        }
+        if (frame.done) return "stop";
+        return undefined;
+      },
+    });
+    if (!emitted)
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Ollama returned an empty response"
+      );
   }
 
   protected override chatPath(): string {

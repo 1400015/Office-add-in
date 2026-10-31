@@ -52,7 +52,7 @@ export const PROVIDER_DEFINITIONS: Record<ProviderId, ProviderDefinition> = {
     defaultEndpoint: "https://api.anthropic.com/v1",
     defaultTimeout: 120000,
     defaultModels: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"],
-    supportsModelListing: false,
+    supportsModelListing: true,
     supportsStreaming: true,
     corsSafe: false,
     docsUrl: "https://docs.anthropic.com/",

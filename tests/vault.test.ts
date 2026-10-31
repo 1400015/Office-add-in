@@ -134,4 +134,64 @@ describe("locked vault", () => {
     expect(parsed.mistral.apiKey).toBe("sk-keep");
     CryptoService.lock();
   });
+
+  it("does not restore decrypted settings when locking during hydration", async () => {
+    const { storage } = createMockStorage();
+    vi.stubGlobal("OfficeRuntime", { storage });
+    const { CryptoService } = await import("../src/services/CryptoService");
+    CryptoService.lock();
+    await useAppStore.getState().createPassphrase("correct-horse");
+    useAppStore
+      .getState()
+      .updateProviderConfig("mistral", { apiKey: "sk-private" });
+    await useAppStore.getState().persist();
+
+    let release!: () => void;
+    let started!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const original = storage.getItem.getMockImplementation()!;
+    storage.getItem.mockImplementation(async (key: string) => {
+      if (key === STORAGE_KEYS.activeProvider) {
+        started();
+        await blocked;
+      }
+      return original(key);
+    });
+    const hydrating = useAppStore.getState().hydrate();
+    await waiting;
+    useAppStore.getState().lockSecrets();
+    release();
+    await hydrating;
+    expect(useAppStore.getState().secretsLocked).toBe(true);
+    expect(useAppStore.getState().providerConfigs.mistral.apiKey).toBe("");
+    expect(useAppStore.getState().history).toEqual([]);
+  });
+
+  it("keeps a failed migration locked and completes it after unlock", async () => {
+    const { storage } = createMockStorage();
+    vi.stubGlobal("OfficeRuntime", { storage });
+    const { CryptoService } = await import("../src/services/CryptoService");
+    CryptoService.lock();
+    const { openDB } = await import("idb");
+    const db = await openDB("mock", 1);
+    vi.mocked(db.getAllFromIndex).mockRejectedValueOnce(
+      new Error("migration failed")
+    );
+
+    await expect(
+      useAppStore.getState().createPassphrase("correct-horse")
+    ).rejects.toThrow("migration failed");
+    expect(useAppStore.getState().secretsLocked).toBe(true);
+    expect(useAppStore.getState().passphraseEnabled).toBe(true);
+    expect(await useAppStore.getState().unlockSecrets("correct-horse")).toBe(
+      true
+    );
+    expect(useAppStore.getState().secretsLocked).toBe(false);
+    CryptoService.lock();
+  });
 });

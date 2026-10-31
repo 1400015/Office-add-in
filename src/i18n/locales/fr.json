@@ -33,7 +33,9 @@
     "provider": "Fournisseur",
     "model": "Modèle",
     "reasoning": "Raisonnement",
-    "refreshModels": "Actualiser les modèles"
+    "refreshModels": "Actualiser les modèles",
+    "modelsFallback": "La liste contient des suggestions ou des résultats enregistrés car le fournisseur est inaccessible.",
+    "noModels": "Aucun modèle n’est disponible pour ce fournisseur."
   },
   "settings": {
     "providers": "Fournisseurs",
@@ -71,7 +73,8 @@
     },
     "language": "Langue",
     "ollamaWarning": "Ollama s'exécute sur localhost et ne fonctionne que dans Office Desktop. Dans Office sur le web, la sécurité du navigateur bloque les connexions locales.",
-    "corsWarning": "L'API de ce fournisseur n'autorise pas les appels directs depuis le navigateur (pas de CORS). Activez l'option proxy ou utilisez un point de terminaison BFF."
+    "corsWarning": "L'API de ce fournisseur n'autorise pas les appels directs depuis le navigateur (pas de CORS). Activez l'option proxy ou utilisez un point de terminaison BFF.",
+    "connectionSuccess": "Connexion vérifiée."
   },
   "quickActions": {
     "word": {
@@ -155,6 +158,7 @@
     "noApiKey": "Configurez d'abord une clé API dans les paramètres.",
     "noModel": "Sélectionnez d'abord un modèle.",
     "uiCrash": "Le complément a rencontré une erreur inattendue. Rechargez pour continuer.",
+    "settingsLoad": "Impossible de charger les paramètres. Rechargez pour réessayer.",
     "generic": "Une erreur est survenue. Veuillez réessayer.",
     "officeNotReady": "Office n'est pas encore prêt.",
     "ollamaOffline": "Impossible d'atteindre Ollama. Vérifiez qu'il est démarré : exécutez 'ollama serve' dans un terminal. Si l'erreur persiste, définissez OLLAMA_ORIGINS pour autoriser l'origine de ce complément.",
@@ -174,7 +178,14 @@
     "badAiFormat": "Le modèle n'a pas renvoyé le format attendu. Réessayez.",
     "proxyConfig": "Le proxy n'est pas configuré. Définissez ALLOWED_ORIGINS sur le worker avant de le déployer en production.",
     "proxyOrigin": "Le proxy a rejeté l'origine de ce complément. Ajoutez l'origine du complément à ALLOWED_ORIGINS sur le worker.",
-    "proxyUpstream": "Le proxy ne relaie pas vers ce fournisseur. Vérifiez le point de terminaison dans Paramètres ; seuls les fournisseurs de la liste sont acceptés."
+    "proxyUpstream": "Le proxy ne relaie pas vers ce fournisseur. Vérifiez le point de terminaison dans Paramètres ; seuls les fournisseurs de la liste sont acceptés.",
+    "editConflict": "Le contenu initial a changé. La réponse ne sera pas appliquée ; elle reste disponible dans la discussion.",
+    "conflictSaveFailed": "Le contenu initial a changé : la réponse n’a pas été appliquée. Elle est visible dans la discussion, mais n’a pas pu être enregistrée dans l’historique.",
+    "selectionTooLong": "La sélection dépasse 60 000 caractères. Sélectionnez un passage plus court.",
+    "emptyResponse": "Le fournisseur a renvoyé une réponse vide. Réessayez.",
+    "locked": "Déverrouillez la phrase secrète avant d’utiliser l’assistant.",
+    "contextTruncated": "Seule une partie du contenu sélectionné a été envoyée car la limite de contexte est dépassée.",
+    "notReady": "Les paramètres sont en cours de chargement. Veuillez patienter."
   },
   "common": {
     "loading": "Chargement...",

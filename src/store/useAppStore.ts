@@ -25,6 +25,7 @@ import { STORAGE_KEYS } from "../constants";
 import { logger } from "../services/LoggerService";
 import { CryptoService } from "../services/CryptoService";
 import { detectLanguage } from "../i18n";
+import { OperationService } from "../services/OperationService";
 
 interface PendingAction {
   id: string;
@@ -36,6 +37,8 @@ interface AppState {
   host: OfficeHost;
   platform: OfficePlatform;
   officeReady: boolean;
+  hydrated: boolean;
+  vaultBusy: boolean;
 
   providerConfigs: Record<ProviderId, ProviderConfig>;
   activeProvider: ProviderId;
@@ -83,6 +86,15 @@ interface AppState {
   setPendingAction: (action: PendingAction | null) => void;
   setHistory: (history: ChatHistory[]) => void;
   persist: () => Promise<void>;
+  ensureChatId: () => string;
+  saveConversation: (
+    messages: ChatMessage[],
+    provider: ProviderId,
+    model: string,
+    id: string
+  ) => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
+  clearHistory: () => Promise<void>;
   hydrate: () => Promise<void>;
   createPassphrase: (passphrase: string) => Promise<void>;
   unlockSecrets: (passphrase: string) => Promise<boolean>;
@@ -108,10 +120,33 @@ function initialView(): AppView {
     : "chat";
 }
 
+let historyQueue: Promise<void> = Promise.resolve();
+let settingsQueue: Promise<void> = Promise.resolve();
+let historyEpoch = 0;
+let historyVersion = 0;
+const chatRevisions = new Map<string, number>();
+const pendingDeletions = new Map<string, number>();
+let clearingHistory = false;
+let vaultEpoch = 0;
+let hydrationSerial = 0;
+function queueHistory(work: () => Promise<void>): Promise<void> {
+  const result = historyQueue.then(work);
+  historyQueue = result.catch(() => {});
+  return result;
+}
+
+function queueSettings(work: () => Promise<void>): Promise<void> {
+  const result = settingsQueue.then(work);
+  settingsQueue = result.catch(() => {});
+  return result;
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   host: "unknown",
   platform: "unknown",
   officeReady: false,
+  hydrated: false,
+  vaultBusy: false,
 
   providerConfigs: createEmptyConfigs(),
   activeProvider: "mistral",
@@ -156,19 +191,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setLanguage: (language) => set({ language }),
   setView: (view) => set({ view }),
 
-  startNewChat: () =>
+  startNewChat: () => {
+    OperationService.cancel();
     set({
       currentChatId: null,
       messages: [],
       isStreaming: false,
+      pendingAction: null,
       streamingContent: "",
       error: null,
-    }),
+    });
+  },
 
   loadChat: (id) => {
+    if (clearingHistory || pendingDeletions.has(id) || get().secretsLocked)
+      return;
     const chat = get().history.find((c) => c.id === id);
     if (chat) {
-      set({ currentChatId: chat.id, messages: chat.messages, error: null });
+      OperationService.cancel();
+      set({
+        currentChatId: chat.id,
+        messages: chat.messages,
+        error: null,
+        isStreaming: false,
+        pendingAction: null,
+        streamingContent: "",
+      });
     }
   },
 
@@ -190,48 +238,114 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPendingAction: (action) => set({ pendingAction: action }),
   setHistory: (history) => set({ history }),
 
-  persist: async () => {
-    const state = get();
-    const writes: Promise<void>[] = [
-      StorageService.setItem(STORAGE_KEYS.activeProvider, state.activeProvider),
-      StorageService.setItem(STORAGE_KEYS.temperature, state.temperature),
-      StorageService.setItem(STORAGE_KEYS.maxTokens, state.maxTokens),
-      StorageService.setItem(STORAGE_KEYS.reasoning, state.reasoning),
-      StorageService.setItem(STORAGE_KEYS.systemPrompt, state.systemPrompt),
-      StorageService.setItem(STORAGE_KEYS.theme, state.theme),
-      StorageService.setItem(STORAGE_KEYS.language, state.language),
-    ];
-    if (!state.secretsLocked) {
-      writes.push(
+  persist: () =>
+    queueSettings(async () => {
+      const state = get();
+      const writes: Promise<void>[] = [
         StorageService.setItem(
-          STORAGE_KEYS.providerConfigs,
-          state.providerConfigs
-        )
+          STORAGE_KEYS.activeProvider,
+          state.activeProvider
+        ),
+        StorageService.setItem(STORAGE_KEYS.temperature, state.temperature),
+        StorageService.setItem(STORAGE_KEYS.maxTokens, state.maxTokens),
+        StorageService.setItem(STORAGE_KEYS.reasoning, state.reasoning),
+        StorageService.setItem(STORAGE_KEYS.systemPrompt, state.systemPrompt),
+        StorageService.setItem(STORAGE_KEYS.theme, state.theme),
+        StorageService.setItem(STORAGE_KEYS.language, state.language),
+      ];
+      if (!state.secretsLocked) {
+        writes.push(
+          StorageService.setItem(
+            STORAGE_KEYS.providerConfigs,
+            state.providerConfigs
+          )
+        );
+      }
+      await Promise.all(writes);
+      await ModelService.setStoredActiveModel(
+        state.activeProvider,
+        state.activeModel
       );
-    }
-    await Promise.all(writes);
-    const activeModelMap =
-      (await StorageService.getItem<Record<string, string>>(
-        STORAGE_KEYS.activeModel
-      )) ?? {};
-    activeModelMap[state.activeProvider] = state.activeModel;
-    await StorageService.setItem(STORAGE_KEYS.activeModel, activeModelMap);
+    }),
 
-    if (state.messages.length > 0) {
-      const chat: ChatHistory = {
-        id: state.currentChatId ?? newChatId(),
-        timestamp: Date.now(),
-        provider: state.activeProvider,
-        model: state.activeModel,
-        title: state.messages[0]?.content.slice(0, 60) ?? "New chat",
-        messages: state.messages,
-      };
+  ensureChatId: () => {
+    const existing = get().currentChatId;
+    if (existing) return existing;
+    const id = newChatId();
+    set({ currentChatId: id });
+    return id;
+  },
+
+  saveConversation: async (messages, provider, model, id) => {
+    if (!messages.length) return;
+    const epoch = historyEpoch;
+    const version = ++historyVersion;
+    const revision = chatRevisions.get(id) ?? 0;
+    const chat: ChatHistory = {
+      id,
+      timestamp: Date.now(),
+      provider,
+      model,
+      title: messages[0]?.content.slice(0, 60) ?? "New chat",
+      messages: [...messages],
+    };
+    await queueHistory(async () => {
+      if (historyEpoch !== epoch || (chatRevisions.get(id) ?? 0) !== revision)
+        return;
       await HistoryService.saveChat(chat);
-      set({ currentChatId: chat.id });
+    });
+    if (
+      historyEpoch === epoch &&
+      (chatRevisions.get(id) ?? 0) === revision &&
+      !get().secretsLocked
+    ) {
+      const history = await HistoryService.listChats();
+      if (
+        historyEpoch === epoch &&
+        historyVersion === version &&
+        !get().secretsLocked
+      )
+        set({ history });
+    }
+  },
+
+  deleteConversation: async (id) => {
+    const version = ++historyVersion;
+    const revision = (chatRevisions.get(id) ?? 0) + 1;
+    chatRevisions.set(id, revision);
+    pendingDeletions.set(id, revision);
+    set((state) => ({
+      history: state.history.filter((chat) => chat.id !== id),
+    }));
+    if (get().currentChatId === id) get().startNewChat();
+    try {
+      await queueHistory(() => HistoryService.deleteChat(id));
+      const history = await HistoryService.listChats();
+      if (historyVersion === version && !get().secretsLocked) set({ history });
+    } finally {
+      if (pendingDeletions.get(id) === revision) pendingDeletions.delete(id);
+    }
+  },
+
+  clearHistory: async () => {
+    const epoch = ++historyEpoch;
+    clearingHistory = true;
+    const version = ++historyVersion;
+    get().startNewChat();
+    set({ history: [] });
+    try {
+      await queueHistory(() => HistoryService.clear());
+      if (historyVersion === version) set({ history: [] });
+    } finally {
+      if (historyEpoch === epoch) clearingHistory = false;
     }
   },
 
   hydrate: async () => {
+    const serial = ++hydrationSerial;
+    const epoch = vaultEpoch;
+    const revision = CryptoService.getRevision();
+    const initialHistoryVersion = historyVersion;
     let configs: Record<ProviderId, ProviderConfig> | null = null;
     let secretsLocked = false;
     try {
@@ -242,9 +356,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (error instanceof StorageLockedError) secretsLocked = true;
       else throw error;
     }
-    const passphraseEnabled = await CryptoService.hasPassphrase().catch(
-      () => false
-    );
+    const passphraseEnabled =
+      typeof OfficeRuntime === "undefined"
+        ? false
+        : await CryptoService.hasPassphrase();
+    secretsLocked =
+      secretsLocked || (passphraseEnabled && !CryptoService.isUnlocked());
+    if (secretsLocked) configs = null;
     const [
       activeProvider,
       temperature,
@@ -282,6 +400,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const provider = activeProvider ?? "mistral";
+    if (
+      serial !== hydrationSerial ||
+      epoch !== vaultEpoch ||
+      revision !== CryptoService.getRevision()
+    )
+      return;
     set({
       providerConfigs: mergedConfigs,
       activeProvider: provider,
@@ -292,32 +416,109 @@ export const useAppStore = create<AppState>((set, get) => ({
       systemPrompt: systemPrompt ?? "",
       theme: theme ?? "auto",
       language: language ?? detectLanguage(),
-      history,
+      history:
+        initialHistoryVersion === historyVersion && !clearingHistory
+          ? history.filter((chat) => !pendingDeletions.has(chat.id))
+          : get().history,
       secretsLocked,
       passphraseEnabled,
+      hydrated: !get().vaultBusy,
     });
   },
 
   createPassphrase: async (passphrase) => {
-    await CryptoService.createPassphrase(passphrase);
-    set({ secretsLocked: false, passphraseEnabled: true });
-    await get().persist();
-    await HistoryService.resealAll();
-    set({ history: await HistoryService.listChats() });
+    if (get().vaultBusy) throw new Error("locked");
+    const epoch = ++vaultEpoch;
+    OperationService.cancel();
+    set({
+      hydrated: false,
+      vaultBusy: true,
+      isStreaming: false,
+      pendingAction: null,
+      streamingContent: "",
+    });
+    try {
+      await queueHistory(async () => {
+        if (epoch !== vaultEpoch) throw new StorageLockedError();
+        await CryptoService.createPassphrase(passphrase);
+        const revision = CryptoService.getRevision();
+        const assertCurrent = (): void => {
+          if (
+            epoch !== vaultEpoch ||
+            revision !== CryptoService.getRevision() ||
+            !CryptoService.isUnlocked()
+          )
+            throw new StorageLockedError();
+        };
+        assertCurrent();
+        set({ secretsLocked: false, passphraseEnabled: true });
+        await get().persist();
+        assertCurrent();
+        await HistoryService.resealAll();
+        assertCurrent();
+        const version = historyVersion;
+        const history = await HistoryService.listChats();
+        assertCurrent();
+        if (version === historyVersion) set({ history });
+      });
+      if (epoch === vaultEpoch) set({ hydrated: true, vaultBusy: false });
+    } catch (error) {
+      if (epoch === vaultEpoch) {
+        const protectedVault = await CryptoService.hasPassphrase().catch(
+          () => true
+        );
+        if (epoch === vaultEpoch) {
+          if (protectedVault) get().lockSecrets();
+          else set({ hydrated: true, vaultBusy: false });
+        }
+      }
+      throw error;
+    }
   },
 
   unlockSecrets: async (passphrase) => {
-    const ok = await CryptoService.unlock(passphrase);
-    if (!ok) return false;
-    // Stay locked in the store until hydrate has replaced the empty in-memory
-    // configs. Flipping the flag first would let a save overwrite the sealed keys.
-    await get().hydrate();
-    await HistoryService.resealAll();
-    set({ history: await HistoryService.listChats() });
-    return true;
+    if (get().vaultBusy) return false;
+    const epoch = ++vaultEpoch;
+    set({ hydrated: false, vaultBusy: true });
+    try {
+      const ok = await CryptoService.unlock(passphrase);
+      if (epoch !== vaultEpoch) return false;
+      if (!ok) {
+        set({ hydrated: true, vaultBusy: false });
+        return false;
+      }
+      const revision = CryptoService.getRevision();
+      const assertCurrent = (): void => {
+        if (
+          epoch !== vaultEpoch ||
+          revision !== CryptoService.getRevision() ||
+          !CryptoService.isUnlocked()
+        )
+          throw new StorageLockedError();
+      };
+      await get().hydrate();
+      assertCurrent();
+      await queueHistory(async () => {
+        assertCurrent();
+        await HistoryService.resealAll();
+      });
+      assertCurrent();
+      const version = historyVersion;
+      const history = await HistoryService.listChats();
+      assertCurrent();
+      if (version === historyVersion) set({ history });
+      set({ hydrated: true, vaultBusy: false });
+      return true;
+    } catch (error) {
+      if (epoch === vaultEpoch) get().lockSecrets();
+      throw error;
+    }
   },
 
   lockSecrets: () => {
+    vaultEpoch++;
+    OperationService.cancel();
+    for (const id of PROVIDER_ORDER) ModelService.invalidate(id);
     CryptoService.lock();
     set({
       secretsLocked: true,
@@ -327,6 +528,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       messages: [],
       currentChatId: null,
       streamingContent: "",
+      isStreaming: false,
+      pendingAction: null,
+      hydrated: true,
+      vaultBusy: false,
     });
   },
 }));

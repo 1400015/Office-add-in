@@ -12,6 +12,11 @@ export type FriendlyErrorKind =
   | "errors.timeout"
   | "errors.rateLimited"
   | "errors.auth"
+  | "errors.editConflict"
+  | "errors.selectionTooLong"
+  | "errors.emptyResponse"
+  | "errors.locked"
+  | "errors.notReady"
   | "errors.generic";
 
 const PROXY_ERROR_KEYS: Record<ProxyFailureKind, FriendlyErrorKind> = {
@@ -35,6 +40,11 @@ const HOST_ERRORS: Record<string, string> = {
   "The presentation has no text.": "errors.noSlideText",
   "A topic is required.": "errors.topicRequired",
   "The AI did not return a formula.": "errors.badAiFormat",
+  "selection-too-long": "errors.selectionTooLong",
+  "empty-response": "errors.emptyResponse",
+  "action-conflict": "errors.editConflict",
+  locked: "errors.locked",
+  notReady: "errors.notReady",
 };
 
 export function friendlyError(
@@ -63,6 +73,12 @@ export function friendlyError(
   // explained instead of collapsing into a generic message.
   const proxyKind = proxyFailure(message);
   if (proxyKind) return PROXY_ERROR_KEYS[proxyKind];
+
+  const status = (error as { status?: number } | null)?.status;
+  const code = (error as { code?: string } | null)?.code;
+  if (status === 401 || status === 403) return "errors.auth";
+  if (status === 429) return "errors.rateLimited";
+  if (code === "EMPTY_RESPONSE") return "errors.emptyResponse";
 
   const provider = context?.provider;
   const isOllama = provider === "ollama" || isOllamaEndpoint(message);

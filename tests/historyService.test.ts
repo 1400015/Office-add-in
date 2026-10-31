@@ -36,6 +36,9 @@ vi.mock("idb", () => {
 });
 
 import { HistoryService } from "../src/services/HistoryService";
+import { CryptoService } from "../src/services/CryptoService";
+
+const storageValues = new Map<string, string>();
 
 function makeChat(id: string, timestamp: number): ChatHistory {
   return {
@@ -49,6 +52,16 @@ function makeChat(id: string, timestamp: number): ChatHistory {
 }
 
 beforeEach(async () => {
+  storageValues.clear();
+  CryptoService.lock();
+  vi.stubGlobal("OfficeRuntime", {
+    storage: {
+      getItem: async (key: string) => storageValues.get(key),
+      setItem: async (key: string, value: string) => {
+        storageValues.set(key, value);
+      },
+    },
+  });
   const { openDB } = await import("idb");
   const db = await openDB("test-db", 1);
   await db.clear("chats");
@@ -56,10 +69,55 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("HistoryService", () => {
+  it("refuses to store plaintext while a vault is locked", async () => {
+    await CryptoService.createPassphrase("correct horse");
+    CryptoService.lock();
+    const { openDB } = await import("idb");
+    const db = await openDB("test-db", 1);
+    await expect(
+      HistoryService.saveChat(makeChat("secret", 1))
+    ).rejects.toThrow("locked");
+    expect(db.put).not.toHaveBeenCalled();
+  });
+
+  it("does not write if the vault locks while encryption is pending", async () => {
+    await CryptoService.createPassphrase("correct horse");
+    const { openDB } = await import("idb");
+    const db = await openDB("test-db", 1);
+    vi.spyOn(CryptoService, "encrypt").mockImplementation(async () => {
+      CryptoService.lock();
+      return "enc:v2:fake:fake";
+    });
+    await expect(
+      HistoryService.saveChat(makeChat("secret", 1))
+    ).rejects.toThrow("locked");
+    expect(db.put).not.toHaveBeenCalled();
+  });
+
+  it("hides legacy plaintext chats while a configured vault is locked", async () => {
+    const chat = makeChat("old", 1);
+    await HistoryService.saveChat(chat);
+    await CryptoService.createPassphrase("correct horse");
+    CryptoService.lock();
+    expect((await HistoryService.listChats())[0]?.title).toBe("locked");
+    expect(await CryptoService.unlock("correct horse")).toBe(true);
+    expect(await HistoryService.getChat("old")).toEqual(chat);
+  });
+
+  it("fails closed if protection metadata cannot be trusted", async () => {
+    storageValues.set("ouai.passphraseCheck", "invalid");
+    const { openDB } = await import("idb");
+    const db = await openDB("test-db", 1);
+    await expect(
+      HistoryService.saveChat(makeChat("secret", 1))
+    ).rejects.toThrow("protection state");
+    expect(db.put).not.toHaveBeenCalled();
+  });
   it("saves and retrieves a chat by id", async () => {
     const chat = makeChat("c1", 1000);
     await HistoryService.saveChat(chat);

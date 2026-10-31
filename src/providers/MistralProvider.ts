@@ -6,7 +6,6 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
-import { httpRequest } from "../services/HttpService";
 
 interface MistralResponse {
   choices?: Array<{ message?: { content?: string } }>;
@@ -67,30 +66,5 @@ export class MistralProvider extends BaseProvider {
       throw new Error("Mistral returned an empty response");
     }
     return content;
-  }
-
-  override async getModels() {
-    const data = await this.fetchModels();
-    return data;
-  }
-
-  private async fetchModels() {
-    try {
-      const data = await httpRequest<{ data?: Array<{ id: string }> }>({
-        url: this.buildUrl("/models"),
-        method: "GET",
-        headers: this.requestHeaders(),
-        timeout: this.config.timeout,
-        provider: this.id,
-      });
-      this.assertOk(data);
-      const models = data.data ?? [];
-      if (models.length > 0) {
-        return models.map((m) => ({ id: m.id, name: m.id, provider: this.id }));
-      }
-    } catch {
-      // fall back to defaults
-    }
-    return super.getModels();
   }
 }

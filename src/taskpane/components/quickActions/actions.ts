@@ -1,3 +1,4 @@
+import type { ActionContext } from "../../../services/ActionContext";
 import type { OfficeHost } from "../../../types";
 import * as wordActions from "../../../word/wordActions";
 import * as excelActions from "../../../excel/excelActions";
@@ -12,7 +13,7 @@ export type I18nLabel = (key: string) => string;
 export interface ActionDef {
   key: string;
   label: string;
-  run: (prompt: PromptFn) => Promise<string>;
+  run: (prompt: PromptFn, action: ActionContext) => Promise<string>;
 }
 
 export type DialogKind = "create" | "translate" | "instruction" | null;
@@ -27,22 +28,22 @@ export function buildQuickActions(host: OfficeHost, t: I18nLabel): ActionDef[] {
         {
           key: "summarize",
           label: t("quickActions.word.summarize"),
-          run: (p) => wordActions.summarizeDocument(p),
+          run: (p, action) => wordActions.summarizeDocument(p, action),
         },
         {
           key: "explain",
           label: t("quickActions.word.explain"),
-          run: (p) => wordActions.explainSelection(p),
+          run: (p, action) => wordActions.explainSelection(p, action),
         },
         {
           key: "rewrite",
           label: t("quickActions.word.rewrite"),
-          run: (p) => wordActions.rewriteSelection(p),
+          run: (p, action) => wordActions.rewriteSelection(p, action),
         },
         {
           key: "fixGrammar",
           label: t("quickActions.word.fixGrammar"),
-          run: (p) => wordActions.fixGrammar(p),
+          run: (p, action) => wordActions.fixGrammar(p, action),
         },
       ];
     case "excel":
@@ -50,12 +51,12 @@ export function buildQuickActions(host: OfficeHost, t: I18nLabel): ActionDef[] {
         {
           key: "explainFormula",
           label: t("quickActions.excel.explainFormula"),
-          run: (p) => excelActions.explainFormula(p),
+          run: (p, action) => excelActions.explainFormula(p, action),
         },
         {
           key: "analyseTable",
           label: t("quickActions.excel.analyseTable"),
-          run: (p) => excelActions.analyseTable(p),
+          run: (p, action) => excelActions.analyseTable(p, action),
         },
       ];
     case "powerpoint":
@@ -63,12 +64,12 @@ export function buildQuickActions(host: OfficeHost, t: I18nLabel): ActionDef[] {
         {
           key: "improveSlide",
           label: t("quickActions.powerpoint.improveSlide"),
-          run: (p) => powerpointActions.improveSlide(p),
+          run: (p, action) => powerpointActions.improveSlide(p, action),
         },
         {
           key: "fixGrammar",
           label: t("quickActions.powerpoint.fixGrammar"),
-          run: (p) => powerpointActions.fixSlideGrammar(p),
+          run: (p, action) => powerpointActions.fixSlideGrammar(p, action),
         },
         {
           key: "explain",
@@ -83,7 +84,8 @@ export function buildQuickActions(host: OfficeHost, t: I18nLabel): ActionDef[] {
         {
           key: "summarizePresentation",
           label: t("quickActions.powerpoint.summarizePresentation"),
-          run: (p) => powerpointActions.summarizePresentation(p),
+          run: (p, action) =>
+            powerpointActions.summarizePresentation(p, action),
         },
       ];
     default:
@@ -108,27 +110,30 @@ export function buildInstructionAction(
   kind: InstructionKind,
   text: string,
   t: I18nLabel
-): { label: string; run: (prompt: PromptFn) => Promise<string> } {
+): {
+  label: string;
+  run: (prompt: PromptFn, action: ActionContext) => Promise<string>;
+} {
   switch (kind) {
     case "word-generate":
       return {
         label: t("quickActions.word.generate"),
-        run: (p) => wordActions.generateAndInsert(text, p),
+        run: (p, action) => wordActions.generateAndInsert(text, p, action),
       };
     case "excel-formula":
       return {
         label: t("quickActions.excel.generateFormula"),
-        run: (p) => excelActions.generateFormula(text, p),
+        run: (p, action) => excelActions.generateFormula(text, p, action),
       };
     case "excel-vba":
       return {
         label: t("quickActions.excel.generateVba"),
-        run: (p) => excelActions.generateVba(text, p),
+        run: (p, action) => excelActions.generateVba(text, p, action),
       };
     case "excel-script":
       return {
         label: t("quickActions.excel.generateScript"),
-        run: (p) => excelActions.generateOfficeScript(text, p),
+        run: (p, action) => excelActions.generateOfficeScript(text, p, action),
       };
   }
 }

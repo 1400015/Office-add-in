@@ -13,28 +13,24 @@ import {
 import { Delete20Regular, DocumentText20Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
-import {
-  HistoryService,
-  LOCKED_HISTORY_TITLE,
-} from "../services/HistoryService";
+import { LOCKED_HISTORY_TITLE } from "../services/HistoryService";
 import { PROVIDER_DEFINITIONS } from "../config/providers";
 
 export function HistoryView(): JSX.Element {
   const { t } = useTranslation();
   const history = useAppStore((s) => s.history);
-  const setHistory = useAppStore((s) => s.setHistory);
+  const deleteConversation = useAppStore((s) => s.deleteConversation);
+  const clearHistory = useAppStore((s) => s.clearHistory);
   const loadChat = useAppStore((s) => s.loadChat);
   const currentChatId = useAppStore((s) => s.currentChatId);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const onDelete = async (id: string): Promise<void> => {
-    await HistoryService.deleteChat(id);
-    setHistory(await HistoryService.listChats());
+    await deleteConversation(id);
   };
 
   const onClearAll = async (): Promise<void> => {
-    await HistoryService.clear();
-    setHistory([]);
+    await clearHistory();
     setConfirmOpen(false);
   };
 

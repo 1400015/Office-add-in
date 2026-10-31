@@ -28,12 +28,14 @@ import { createProvider } from "../src/providers/ProviderFactory";
 
 function createConfigs(): Record<ProviderId, ProviderConfig> {
   const configs = {} as Record<ProviderId, ProviderConfig>;
-  for (const id of PROVIDER_ORDER) configs[id] = createDefaultProviderConfig(id);
+  for (const id of PROVIDER_ORDER)
+    configs[id] = createDefaultProviderConfig(id);
   configs.mistral = { ...configs.mistral, apiKey: "test-key", timeout: 30000 };
   return configs;
 }
 
 const mockStore = {
+  hydrated: true,
   providerConfigs: createConfigs(),
   activeProvider: "mistral" as const,
   activeModel: "mistral-large-latest",

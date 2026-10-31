@@ -33,7 +33,9 @@
     "provider": "Proveedor",
     "model": "Modelo",
     "reasoning": "Razonamiento",
-    "refreshModels": "Actualizar modelos"
+    "refreshModels": "Actualizar modelos",
+    "modelsFallback": "La lista contiene sugerencias o resultados guardados porque no se pudo contactar con el proveedor.",
+    "noModels": "No hay modelos disponibles para este proveedor."
   },
   "settings": {
     "providers": "Proveedores",
@@ -71,7 +73,8 @@
     },
     "language": "Idioma",
     "ollamaWarning": "Ollama se ejecuta en localhost y solo funciona en Office Desktop. En Office para la web, la seguridad del navegador bloquea las conexiones locales.",
-    "corsWarning": "La API de este proveedor no permite llamadas directas desde el navegador (sin CORS). Activa la opción de proxy o usa un punto de terminación BFF."
+    "corsWarning": "La API de este proveedor no permite llamadas directas desde el navegador (sin CORS). Activa la opción de proxy o usa un punto de terminación BFF.",
+    "connectionSuccess": "Conexión verificada."
   },
   "quickActions": {
     "word": {
@@ -155,6 +158,7 @@
     "noApiKey": "Configura primero una clave de API en Configuración.",
     "noModel": "Selecciona primero un modelo.",
     "uiCrash": "El add-in encontró un error inesperado. Recarga para continuar.",
+    "settingsLoad": "No se pudo cargar la configuración. Recarga para volver a intentarlo.",
     "generic": "Algo salió mal. Inténtalo de nuevo.",
     "officeNotReady": "Office aún no está listo.",
     "ollamaOffline": "No se puede conectar con Ollama. Comprueba que esté en ejecución: ejecuta 'ollama serve' en un terminal. Si el error persiste, define OLLAMA_ORIGINS para permitir el origen de este add-in.",
@@ -174,7 +178,14 @@
     "badAiFormat": "El modelo no devolvió el formato esperado. Inténtalo de nuevo.",
     "proxyConfig": "El proxy no está configurado. Define ALLOWED_ORIGINS en el worker antes de publicarlo en producción.",
     "proxyOrigin": "El proxy rechazó el origen de este complemento. Añade el origen del complemento a ALLOWED_ORIGINS en el worker.",
-    "proxyUpstream": "El proxy no reenvía a este proveedor. Revisa el punto de terminación en Configuración; solo se permite a proveedores de la lista."
+    "proxyUpstream": "El proxy no reenvía a este proveedor. Revisa el punto de terminación en Configuración; solo se permite a proveedores de la lista.",
+    "editConflict": "El contenido original cambió. La respuesta no se aplicó; está disponible en el chat.",
+    "conflictSaveFailed": "El contenido original cambió y la respuesta no se aplicó. Está visible en el chat, pero no se pudo guardar en el historial.",
+    "selectionTooLong": "La selección supera los 60 000 caracteres. Selecciona un fragmento más corto.",
+    "emptyResponse": "El proveedor devolvió una respuesta vacía. Inténtalo de nuevo.",
+    "locked": "Desbloquea la frase de contraseña antes de usar el asistente.",
+    "contextTruncated": "Solo se envió parte del contenido seleccionado porque supera el límite de contexto.",
+    "notReady": "La configuración aún se está cargando. Espera un momento."
   },
   "common": {
     "loading": "Cargando...",

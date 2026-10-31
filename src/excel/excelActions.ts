@@ -3,25 +3,21 @@ import { logger } from "../services/LoggerService";
 
 export type PromptFn = (text: string) => Promise<string>;
 
-export interface RangeSnapshot {
-  address: string;
-  values: (string | number | boolean)[][];
-  formulas: string[][];
-}
+import { readBoundedSelection, type RangeSnapshot } from "./rangeSnapshot";
+import {
+  ActionConflictError,
+  isInvalidOfficeTarget,
+  type ActionContext,
+} from "../services/ActionContext";
 
-async function readSelectedRange(): Promise<RangeSnapshot> {
-  return Excel.run(async (context) => {
-    const range = context.workbook.getSelectedRange();
-    range.load("address,values,formulas");
-    await context.sync();
-    return {
-      address: range.address,
-      values: (range.values as (string | number | boolean)[][]).map((row) => [
-        ...row,
-      ]),
-      formulas: (range.formulas as string[][]).map((row) => [...row]),
-    };
-  });
+async function readSelectedRange(
+  action?: ActionContext
+): Promise<RangeSnapshot> {
+  action?.assertCurrent();
+  const range = await Excel.run((context) => readBoundedSelection(context));
+  action?.assertCurrent();
+  if (range.truncated) action?.reportTruncation?.();
+  return range;
 }
 
 function rangeToCsv(range: RangeSnapshot): string {
@@ -34,7 +30,7 @@ function rangeToCsv(range: RangeSnapshot): string {
       row
         .map((cell, c) => {
           const formula = formulaRow[c];
-          return formula && formula.startsWith("=")
+          return typeof formula === "string" && formula.startsWith("=")
             ? formula
             : String(cell ?? "");
         })
@@ -54,11 +50,19 @@ export function extractFormula(raw: string): string {
   return line;
 }
 
-export async function explainFormula(prompt: PromptFn): Promise<string> {
-  logger.info("excel", "Explain formula");
-  const range = await readSelectedRange();
-  const formula = range.formulas[0]?.[0] ?? "";
-  if (!formula.startsWith("=")) {
+export async function explainFormula(
+  prompt: PromptFn,
+  action?: ActionContext
+): Promise<string> {
+  action?.assertCurrent();
+  const formula = await Excel.run(async (context) => {
+    const cell = context.workbook.getSelectedRange().getCell(0, 0);
+    cell.load("formulas");
+    await context.sync();
+    return cell.formulas[0]?.[0];
+  });
+  action?.assertCurrent();
+  if (typeof formula !== "string" || !formula.startsWith("=")) {
     throw new Error("Select a cell containing a formula.");
   }
   return prompt(
@@ -68,54 +72,105 @@ export async function explainFormula(prompt: PromptFn): Promise<string> {
 
 export async function generateFormula(
   instruction: string,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
-  logger.info("excel", "Generate formula", { instruction });
-  const range = await readSelectedRange();
-  const raw = await prompt(
-    `Create an Excel formula for the following request. Return ONLY the formula (starting with =), no explanations, no markdown code fences:\n\n${instruction}\n\nTarget cell: ${range.address}`
-  );
-  const formula = extractFormula(raw);
-  await Excel.run(async (context) => {
+  action?.assertCurrent();
+  const captured = await Excel.run(async (context) => {
     const cell = context.workbook.getSelectedRange().getCell(0, 0);
-    cell.formulas = [[formula]];
-    await context.sync();
+    cell.load("address,formulas");
+    cell.track();
+    try {
+      await context.sync();
+      action?.assertCurrent();
+      return { cell, address: cell.address, original: cell.formulas[0]?.[0] };
+    } catch (error) {
+      cell.untrack();
+      await context.sync().catch(() => {});
+      throw error;
+    }
   });
-  return formula;
+  try {
+    const raw = await prompt(
+      `Create an Excel formula for the following request. Return ONLY the formula (starting with =), no explanations, no markdown code fences:\n\n${instruction}\n\nTarget cell: ${captured.address}`
+    );
+    action?.assertCurrent();
+    const formula = extractFormula(raw);
+    try {
+      await Excel.run(captured.cell, async (context) => {
+        action?.assertCurrent();
+        captured.cell.load("formulas");
+        await context.sync();
+        action?.assertCurrent();
+        if (captured.cell.formulas[0]?.[0] !== captured.original)
+          throw new ActionConflictError(formula);
+        captured.cell.formulas = [[formula]];
+        action?.assertCurrent();
+        await context.sync();
+      });
+    } catch (error) {
+      if (isInvalidOfficeTarget(error)) throw new ActionConflictError(formula);
+      throw error;
+    }
+    return formula;
+  } finally {
+    try {
+      await Excel.run(captured.cell, async (context) => {
+        captured.cell.untrack();
+        await context.sync();
+      });
+    } catch (error) {
+      logger.warn("excel", "Failed to release tracked cell", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
-export async function analyseTable(prompt: PromptFn): Promise<string> {
+export async function analyseTable(
+  prompt: PromptFn,
+  action?: ActionContext
+): Promise<string> {
   logger.info("excel", "Analyse table");
-  const range = await readSelectedRange();
+  const range = await readSelectedRange(action);
   const csv = rangeToCsv(range);
   if (!csv.trim()) throw new Error("Select a range with data.");
   const truncated =
-    csv.length > MAX_CONTEXT_CHARS ? csv.slice(0, MAX_CONTEXT_CHARS) : csv;
+    csv.length > MAX_CONTEXT_CHARS
+      ? `${csv.slice(0, MAX_CONTEXT_CHARS)}\n[Content truncated]`
+      : csv;
+  if (csv.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
   return prompt(
-    `Analyse this table data (CSV format, range ${range.address}). Identify trends, outliers and anomalies, and provide an executive summary:\n\n${truncated}`
+    `Analyse this table data (CSV format, range ${range.address}, analyzed ${range.analyzedAddress}${range.truncated ? " (truncated)" : ""}). Identify trends, outliers and anomalies, and provide an executive summary:\n\n${truncated}`
   );
 }
 
 export async function translateRange(
   targetLanguage: string,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
   logger.info("excel", "Translate range", { targetLanguage });
-  const range = await readSelectedRange();
+  const range = await readSelectedRange(action);
   const csv = rangeToCsv(range);
   if (!csv.trim()) throw new Error("Select a range with text.");
   const truncated =
-    csv.length > MAX_CONTEXT_CHARS ? csv.slice(0, MAX_CONTEXT_CHARS) : csv;
+    csv.length > MAX_CONTEXT_CHARS
+      ? `${csv.slice(0, MAX_CONTEXT_CHARS)}\n[Content truncated]`
+      : csv;
+  if (csv.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
   return prompt(
-    `Translate the textual content of this spreadsheet range into ${targetLanguage}. Keep numbers unchanged. Return only the translation:\n\n${truncated}`
+    `Translate the textual content of this spreadsheet range ${range.address}, analyzed ${range.analyzedAddress}${range.truncated ? " (truncated)" : ""}, into ${targetLanguage}. Keep numbers unchanged. Return only the translation:\n\n${truncated}`
   );
 }
 
 export async function generateVba(
   instruction: string,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
-  logger.info("excel", "Generate VBA", { instruction });
+  action?.assertCurrent();
+  logger.info("excel", "Generate VBA");
   return prompt(
     `Write an Excel VBA macro for the following request. Return only valid, commented VBA code. Do not claim the macro was installed:\n\n${instruction}`
   );
@@ -123,9 +178,11 @@ export async function generateVba(
 
 export async function generateOfficeScript(
   instruction: string,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
-  logger.info("excel", "Generate Office Script", { instruction });
+  action?.assertCurrent();
+  logger.info("excel", "Generate Office Script");
   return prompt(
     `Write a TypeScript Office Script for Excel for the following request. Return only valid Office Script code using the main function signature. Do not claim the script was installed:\n\n${instruction}`
   );

@@ -1,6 +1,11 @@
 import { MAX_CONTEXT_CHARS } from "../constants";
 import { logger } from "../services/LoggerService";
 import {
+  ActionConflictError,
+  isInvalidOfficeTarget,
+  type ActionContext,
+} from "../services/ActionContext";
+import {
   clampSlideCount,
   parseAlignedStrings,
   parseSlidePlans,
@@ -59,25 +64,56 @@ async function readActiveSlide(): Promise<SlideSnapshot> {
 }
 
 async function writeShapeTexts(
-  slideId: string,
-  updates: ShapeText[]
+  snapshot: SlideSnapshot,
+  updates: ShapeText[],
+  action?: ActionContext
 ): Promise<void> {
   if (updates.length === 0) return;
-  await PowerPoint.run(async (context) => {
-    const slide = context.presentation.slides.getItem(slideId);
-    for (const update of updates) {
-      const shape = slide.shapes.getItem(update.id);
-      shape.textFrame.textRange.text = update.text;
-    }
-    await context.sync();
-  });
+  const result = updates.map((update) => update.text).join("\n\n");
+  action?.assertCurrent();
+  try {
+    await PowerPoint.run(async (context) => {
+      action?.assertCurrent();
+      const slides = context.presentation.slides;
+      slides.load("items/id");
+      await context.sync();
+      action?.assertCurrent();
+      const slide = slides.items.find((item) => item.id === snapshot.slideId);
+      if (!slide) throw new ActionConflictError(result);
+      slide.shapes.load("items/id,items/textFrame/textRange/text");
+      await context.sync();
+      action?.assertCurrent();
+      const shapes = new Map(
+        slide.shapes.items.map((shape) => [shape.id, shape])
+      );
+      for (const original of snapshot.shapes) {
+        const shape = shapes.get(original.id);
+        if (!shape || shape.textFrame?.textRange?.text !== original.text) {
+          throw new ActionConflictError(result);
+        }
+      }
+      for (const update of updates) {
+        const shape = shapes.get(update.id)!;
+        shape.textFrame.textRange.text = update.text;
+      }
+      action?.assertCurrent();
+      await context.sync();
+    });
+  } catch (error) {
+    action?.assertCurrent();
+    if (isInvalidOfficeTarget(error)) throw new ActionConflictError(result);
+    throw error;
+  }
 }
 
 async function rewriteSlideTexts(
   prompt: PromptFn,
-  instruction: string
+  instruction: string,
+  action?: ActionContext
 ): Promise<string> {
+  action?.assertCurrent();
   const snapshot = await readActiveSlide();
+  action?.assertCurrent();
   if (snapshot.shapes.length === 0) {
     throw new Error("The active slide has no text.");
   }
@@ -87,41 +123,53 @@ async function rewriteSlideTexts(
       `Respond ONLY with a JSON array of ${originals.length} strings, in the same order, no markdown fences:\n` +
       JSON.stringify(originals)
   );
+  action?.assertCurrent();
   const rewritten = parseAlignedStrings(raw, originals);
   await writeShapeTexts(
-    snapshot.slideId,
+    snapshot,
     snapshot.shapes.map((shape, index) => ({
       id: shape.id,
       text: rewritten[index]!,
-    }))
+    })),
+    action
   );
   return rewritten.join("\n\n");
 }
 
-export async function improveSlide(prompt: PromptFn): Promise<string> {
+export async function improveSlide(
+  prompt: PromptFn,
+  action?: ActionContext
+): Promise<string> {
   logger.info("powerpoint", "Improve slide");
   return rewriteSlideTexts(
     prompt,
-    "Improve each text block of this PowerPoint slide. Keep the same language and meaning. Make the wording clearer, more concise and more professional."
+    "Improve each text block of this PowerPoint slide. Keep the same language and meaning. Make the wording clearer, more concise and more professional.",
+    action
   );
 }
 
-export async function fixSlideGrammar(prompt: PromptFn): Promise<string> {
+export async function fixSlideGrammar(
+  prompt: PromptFn,
+  action?: ActionContext
+): Promise<string> {
   logger.info("powerpoint", "Fix slide grammar");
   return rewriteSlideTexts(
     prompt,
-    "Correct the grammar, spelling and punctuation of each text block. Keep the original meaning, language and tone. Do not add new ideas."
+    "Correct the grammar, spelling and punctuation of each text block. Keep the original meaning, language and tone. Do not add new ideas.",
+    action
   );
 }
 
 export async function translateSlide(
   targetLanguage: string,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
   logger.info("powerpoint", "Translate slide", { targetLanguage });
   return rewriteSlideTexts(
     prompt,
-    `Translate each text block into ${targetLanguage}. Keep bullet structure. Do not add commentary.`
+    `Translate each text block into ${targetLanguage}. Keep bullet structure. Do not add commentary.`,
+    action
   );
 }
 
@@ -145,8 +193,12 @@ export async function generateSpeakerNotes(prompt: PromptFn): Promise<string> {
   );
 }
 
-export async function summarizePresentation(prompt: PromptFn): Promise<string> {
+export async function summarizePresentation(
+  prompt: PromptFn,
+  action?: ActionContext
+): Promise<string> {
   logger.info("powerpoint", "Summarize presentation");
+  action?.assertCurrent();
   const outline = await PowerPoint.run(async (context) => {
     const slides = context.presentation.slides;
     slides.load("items/shapes/items/textFrame/textRange/text");
@@ -161,9 +213,11 @@ export async function summarizePresentation(prompt: PromptFn): Promise<string> {
       })
       .join("\n");
   });
+  action?.assertCurrent();
+  if (outline.length > MAX_CONTEXT_CHARS) action?.reportTruncation?.();
   const truncated =
     outline.length > MAX_CONTEXT_CHARS
-      ? outline.slice(0, MAX_CONTEXT_CHARS)
+      ? `${outline.slice(0, MAX_CONTEXT_CHARS)}\n[Content truncated]`
       : outline;
   if (!truncated.trim()) throw new Error("The presentation has no text.");
   return prompt(
@@ -173,8 +227,10 @@ export async function summarizePresentation(prompt: PromptFn): Promise<string> {
 
 export async function createPresentation(
   input: CreatePresentationInput,
-  prompt: PromptFn
+  prompt: PromptFn,
+  action?: ActionContext
 ): Promise<string> {
+  action?.assertCurrent();
   const slideCount = clampSlideCount(input.slideCount);
   const topic = input.topic.trim();
   if (!topic) throw new Error("A topic is required.");
@@ -188,23 +244,30 @@ export async function createPresentation(
       `Respond ONLY with a JSON array in this exact format, no markdown fences:\n` +
       `[{"title": "...", "bullets": ["...", "..."]}]`
   );
+  action?.assertCurrent();
   const plans = parseSlidePlans(raw, slideCount);
 
   await PowerPoint.run(async (context) => {
     for (const plan of plans) {
+      action?.assertCurrent();
       context.presentation.slides.add();
       const slides = context.presentation.slides;
       const countResult = slides.getCount();
+      action?.assertCurrent();
       await context.sync();
+      action?.assertCurrent();
       const slide = slides.getItemAt(countResult.value - 1);
       slide.shapes.load("items/type");
       await context.sync();
+      action?.assertCurrent();
       for (const shape of slide.shapes.items) {
         if (shape.type === "Placeholder") {
           shape.delete();
         }
       }
+      action?.assertCurrent();
       await context.sync();
+      action?.assertCurrent();
       const titleBox = slide.shapes.addTextBox(plan.title, {
         left: 40,
         top: 28,
@@ -222,6 +285,7 @@ export async function createPresentation(
       });
       bodyBox.name = "Body";
       bodyBox.textFrame.textRange.text = body;
+      action?.assertCurrent();
       await context.sync();
     }
   });
@@ -234,16 +298,25 @@ export async function createPresentation(
     .join("\n\n");
 }
 
-export async function insertTextOnSlide(text: string): Promise<void> {
+export async function insertTextOnSlide(
+  text: string,
+  action?: ActionContext
+): Promise<void> {
   const payload = text.trim();
   if (!payload) return;
-  const replaced = await replaceSelectedText(payload);
-  if (!replaced) await addTextBox(payload);
+  action?.assertCurrent();
+  const replaced = await replaceSelectedText(payload, action);
+  action?.assertCurrent();
+  if (!replaced) await addTextBox(payload, action);
 }
 
-async function replaceSelectedText(payload: string): Promise<boolean> {
+async function replaceSelectedText(
+  payload: string,
+  action?: ActionContext
+): Promise<boolean> {
   try {
     return await PowerPoint.run(async (context) => {
+      action?.assertCurrent();
       const presentation = context.presentation as PowerPoint.Presentation & {
         getSelectedTextRangeOrNullObject?: () => PowerPoint.TextRange;
       };
@@ -251,6 +324,7 @@ async function replaceSelectedText(payload: string): Promise<boolean> {
       const range = presentation.getSelectedTextRangeOrNullObject();
       range.load("text");
       await context.sync();
+      action?.assertCurrent();
       const nullable = range as PowerPoint.TextRange & {
         isNullObject?: boolean;
       };
@@ -259,10 +333,12 @@ async function replaceSelectedText(payload: string): Promise<boolean> {
       range.text = current.trim()
         ? `${current.replace(/\s+$/, "")}\n${payload}`
         : payload;
+      action?.assertCurrent();
       await context.sync();
       return true;
     });
   } catch (error) {
+    action?.assertCurrent();
     logger.info("powerpoint", "No selected text range; inserting a text box", {
       error: error instanceof Error ? error.message : String(error),
     });
@@ -270,22 +346,31 @@ async function replaceSelectedText(payload: string): Promise<boolean> {
   }
 }
 
-async function addTextBox(payload: string): Promise<void> {
+async function addTextBox(
+  payload: string,
+  action?: ActionContext
+): Promise<void> {
   await PowerPoint.run(async (context) => {
+    action?.assertCurrent();
     const presentation = context.presentation;
     const selected = presentation.getSelectedSlides();
     selected.load("items");
     await context.sync();
+    action?.assertCurrent();
     let slide = selected.items[0];
     if (!slide) {
       const countResult = presentation.slides.getCount();
       await context.sync();
+      action?.assertCurrent();
       if (countResult.value === 0) {
         presentation.slides.add();
+        action?.assertCurrent();
         await context.sync();
+        action?.assertCurrent();
       }
       const after = presentation.slides.getCount();
       await context.sync();
+      action?.assertCurrent();
       slide = presentation.slides.getItemAt(after.value - 1);
     }
     const box = slide.shapes.addTextBox(payload, {
@@ -296,6 +381,7 @@ async function addTextBox(payload: string): Promise<void> {
     });
     box.name = "Inserted text";
     box.textFrame.textRange.text = payload;
+    action?.assertCurrent();
     await context.sync();
   });
 }

@@ -6,8 +6,6 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
-import { httpRequest } from "../services/HttpService";
-import { logger } from "../services/LoggerService";
 
 interface OpenRouterResponse {
   choices?: Array<{ message?: { content?: string } }>;
@@ -70,35 +68,5 @@ export class OpenRouterProvider extends BaseProvider {
       throw new Error("OpenRouter returned an empty response");
     }
     return content;
-  }
-
-  override async getModels() {
-    try {
-      const data = await httpRequest<{
-        data?: Array<{ id: string; name?: string }>;
-      }>({
-        url: this.buildUrl("/models"),
-        method: "GET",
-        headers: this.requestHeaders(),
-        timeout: this.config.timeout,
-        provider: this.id,
-      });
-      this.assertOk(data);
-      const models = (data.data ?? []).map((m) => ({
-        id: m.id,
-        name: m.name ?? m.id,
-        provider: this.id,
-      }));
-      if (models.length > 0) return models;
-    } catch (error) {
-      logger.warn(
-        "provider",
-        "openrouter: model listing failed, using defaults",
-        {
-          error: error instanceof Error ? error.message : String(error),
-        }
-      );
-    }
-    return super.getModels();
   }
 }

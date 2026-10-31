@@ -23,7 +23,15 @@ export function TemplatesView(): JSX.Element {
   const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
   const persist = useAppStore((s) => s.persist);
   const setView = useAppStore((s) => s.setView);
-  const { sendMessage } = useChat();
+  const busy = useAppStore(
+    (s) =>
+      s.isStreaming ||
+      s.pendingAction !== null ||
+      s.secretsLocked ||
+      s.vaultBusy ||
+      !s.hydrated
+  );
+  const { submitMessage } = useChat();
   const [used, setUsed] = useState<string | null>(null);
 
   const onUse = async (
@@ -31,13 +39,22 @@ export function TemplatesView(): JSX.Element {
     prompt: string,
     system?: string
   ): Promise<void> => {
+    if (busy) return;
     if (system) {
       setSystemPrompt(system);
-      await persist();
+      try {
+        await persist();
+      } catch {
+        useAppStore.getState().setError("errors.generic");
+        setView("chat");
+        return;
+      }
     }
-    setUsed(templateId);
     setView("chat");
-    await sendMessage(prompt);
+    const request = submitMessage(prompt);
+    if (!request) return;
+    setUsed(templateId);
+    await request;
   };
 
   return (
@@ -76,6 +93,7 @@ export function TemplatesView(): JSX.Element {
                       <Button
                         size="small"
                         appearance="primary"
+                        disabled={busy}
                         onClick={() => void onUse(tpl.id, prompt, system)}
                       >
                         {used === tpl.id

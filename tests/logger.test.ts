@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { logger, sanitizeText } from "../src/services/LoggerService";
 
 describe("sanitizeText", () => {
@@ -57,6 +57,22 @@ describe("logger sanitization", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]!.message).not.toContain("sk-abcdef123456");
     expect(entries[0]!.message).toContain("***REDACTED***");
+  });
+
+  it("redacts secrets in console output, nested arrays and sensitive keys", () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const circular: Record<string, unknown> = { apiKey: "short-secret" };
+    circular.self = circular;
+    logger.warn("test", "request https://example.test/?key=shortsecret", {
+      entries: [{ authorization: "custom-secret" }, ["Bearer tokentokentoken"]],
+      circular,
+    });
+    const output = JSON.stringify(consoleSpy.mock.calls);
+    expect(output).not.toContain("shortsecret");
+    expect(output).not.toContain("short-secret");
+    expect(output).not.toContain("custom-secret");
+    expect(output).not.toContain("tokentokentoken");
+    consoleSpy.mockRestore();
   });
 
   it("sanitizes string meta values", () => {

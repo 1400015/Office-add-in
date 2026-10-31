@@ -1,231 +1,351 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { createProvider } from "../providers/ProviderFactory";
-import { getContext, insertTextAtSelection } from "../services/OfficeService";
-import { HistoryService } from "../services/HistoryService";
+import {
+  getContext,
+  getPlatform,
+  insertTextAtSelection,
+} from "../services/OfficeService";
+import { OperationService, type Operation } from "../services/OperationService";
 import type { ChatMessage } from "../types";
+import type { ActionContext } from "../services/ActionContext";
 import { logger } from "../services/LoggerService";
 import { friendlyError } from "../services/ErrorService";
-import { getPlatform } from "../services/OfficeService";
 
 function uid(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function configured(): void {
+  const state = useAppStore.getState();
+  if (!state.hydrated || state.vaultBusy) throw new Error("notReady");
+  if (state.secretsLocked) throw new Error("locked");
+  const config = state.providerConfigs[state.activeProvider];
+  if (!config.apiKey.trim() && config.id !== "ollama")
+    throw new Error("noApiKey");
+  if (!state.activeModel) throw new Error("noModel");
+}
+
+function showError(error: unknown): void {
+  const state = useAppStore.getState();
+  logger.error("chat", "operation failed", {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  state.setError(
+    friendlyError(error, {
+      provider: state.activeProvider,
+      onWeb: getPlatform() === "web",
+    })
+  );
+}
+
+function stillCurrent(operation: Operation): boolean {
+  return OperationService.current() === operation && !operation.signal.aborted;
+}
+
 export function useChat() {
-  const abortRef = useRef<AbortController | null>(null);
-
-  const ensureConfigured = useCallback((): void => {
-    const { providerConfigs, activeProvider, activeModel } =
-      useAppStore.getState();
-    const config = providerConfigs[activeProvider];
-    if (!config.apiKey.trim() && config.id !== "ollama") {
-      throw new Error("noApiKey");
-    }
-    if (!activeModel) {
-      throw new Error("noModel");
-    }
-  }, []);
-
   const runStream = useCallback(
-    async (history: ChatMessage[]): Promise<void> => {
+    async (history: ChatMessage[], operation: Operation): Promise<void> => {
       const state = useAppStore.getState();
-      const config = state.providerConfigs[state.activeProvider];
-      const provider = createProvider(config);
-      const context = await getContext();
+      const providerId = state.activeProvider;
+      const model = state.activeModel;
+      const provider = createProvider(state.providerConfigs[providerId]);
       const options = {
-        model: state.activeModel,
+        model,
         temperature: state.temperature,
         maxTokens: state.maxTokens,
         reasoning: state.reasoning,
         systemPrompt: state.systemPrompt || undefined,
       };
-      const controller = new AbortController();
-      abortRef.current = controller;
       let full = "";
-      let failed = false;
       try {
+        await state.saveConversation(
+          history,
+          providerId,
+          model,
+          operation.conversationId
+        );
+        operation.assertCurrent();
+        const context = await getContext({
+          signal: operation.signal,
+          assertCurrent: () => operation.assertCurrent(),
+          reportTruncation: () => {
+            if (stillCurrent(operation))
+              useAppStore.getState().setError("errors.contextTruncated");
+          },
+        });
+        operation.assertCurrent();
         await provider.chatStream(
           history,
           options,
           (token) => {
+            if (!stillCurrent(operation)) return;
             full += token;
             useAppStore.getState().appendStreamToken(token);
           },
           context,
-          controller.signal
+          operation.signal
         );
-      } catch (error) {
-        if (controller.signal.aborted) {
-          full = useAppStore.getState().streamingContent || full;
-        } else {
-          failed = true;
-          logger.error("chat", "sendMessage failed", {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          useAppStore.getState().setStreaming(false);
-          useAppStore.getState().setError(
-            friendlyError(error, {
-              provider: useAppStore.getState().activeProvider,
-              onWeb: getPlatform() === "web",
-            })
-          );
-        }
-      } finally {
-        abortRef.current = null;
-      }
-      if (failed) return;
-
-      // If the conversation changed while streaming (for example "New chat"),
-      // the answer no longer belongs to it: drop it instead of polluting the
-      // new conversation.
-      const lastSentId = history[history.length - 1]?.id;
-      const current = useAppStore.getState();
-      if (
-        lastSentId &&
-        current.messages[current.messages.length - 1]?.id !== lastSentId
-      ) {
-        current.setStreaming(false);
-        return;
-      }
-
-      try {
-        const assistantMessage: ChatMessage = {
+        operation.assertCurrent();
+        if (!full) throw new Error("empty-response");
+        const answer: ChatMessage = {
           id: uid(),
           role: "assistant",
-          content: full || "(empty response)",
+          content: full,
           timestamp: Date.now(),
         };
-        const messages = [...useAppStore.getState().messages, assistantMessage];
+        const messages = [...useAppStore.getState().messages, answer];
         useAppStore.getState().setMessages(messages);
-        useAppStore.getState().setStreaming(false);
-        await useAppStore.getState().persist();
-        useAppStore.getState().setHistory(await HistoryService.listChats());
-      } catch (error) {
-        logger.error("chat", "sendMessage failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        useAppStore.getState().setStreaming(false);
-        useAppStore.getState().setError(
-          friendlyError(error, {
-            provider: useAppStore.getState().activeProvider,
-            onWeb: getPlatform() === "web",
-          })
+        // Keep the input disabled while the response is being saved, without
+        // allowing Stop to append the completed response a second time.
+        useAppStore.getState().setStreaming(true, "");
+        await state.saveConversation(
+          messages,
+          providerId,
+          model,
+          operation.conversationId
         );
+        operation.assertCurrent();
+        useAppStore.getState().setStreaming(false);
+      } catch (error) {
+        if (stillCurrent(operation)) {
+          useAppStore.getState().setStreaming(false);
+          showError(error);
+        }
+      } finally {
+        OperationService.finish(operation);
       }
     },
     []
   );
 
-  const sendMessage = useCallback(
-    async (content: string): Promise<void> => {
+  const submitMessage = useCallback(
+    (content: string): Promise<void> | null => {
       const state = useAppStore.getState();
       try {
-        const config = state.providerConfigs[state.activeProvider];
-        if (!config.apiKey.trim() && config.id !== "ollama") {
-          throw new Error("noApiKey");
-        }
-        if (!state.activeModel) throw new Error("noModel");
+        configured();
       } catch (error) {
         state.setError(
-          friendlyError(error, {
-            provider: useAppStore.getState().activeProvider,
-          })
+          friendlyError(error, { provider: state.activeProvider })
         );
-        return;
+        return null;
       }
-
-      const userMessage: ChatMessage = {
+      if (OperationService.current()) return null;
+      const chatId = state.ensureChatId();
+      const operation = OperationService.begin(
+        chatId,
+        state.activeProvider,
+        state.activeModel
+      );
+      if (!operation) return null;
+      const message: ChatMessage = {
         id: uid(),
         role: "user",
         content,
         timestamp: Date.now(),
       };
-      state.appendMessage(userMessage);
+      state.appendMessage(message);
       state.setStreaming(true, "");
       state.setError(null);
-      await runStream(useAppStore.getState().messages);
+      return runStream(useAppStore.getState().messages, operation);
     },
     [runStream]
   );
 
+  const sendMessage = useCallback(
+    async (content: string): Promise<void> => {
+      await submitMessage(content);
+    },
+    [submitMessage]
+  );
+
   const regenerateLast = useCallback(async (): Promise<void> => {
     const state = useAppStore.getState();
-    const messages = [...state.messages];
-    if (messages[messages.length - 1]?.role === "assistant") {
-      messages.pop();
+    try {
+      configured();
+    } catch (error) {
+      showError(error);
+      return;
     }
+    if (OperationService.current()) return;
+    const messages = [...state.messages];
+    if (messages[messages.length - 1]?.role === "assistant") messages.pop();
     if (!messages.some((message) => message.role === "user")) return;
+    const operation = OperationService.begin(
+      state.ensureChatId(),
+      state.activeProvider,
+      state.activeModel
+    );
+    if (!operation) return;
     state.setMessages(messages);
     state.setStreaming(true, "");
     state.setError(null);
-    await runStream(messages);
+    await runStream(messages, operation);
   }, [runStream]);
 
   const stopStreaming = useCallback((): void => {
-    abortRef.current?.abort();
+    const state = useAppStore.getState();
+    const op = OperationService.current();
+    if (!op) return;
+    const partial = state.isStreaming ? state.streamingContent : "";
+    OperationService.cancel();
+    state.setStreaming(false);
+    state.setPendingAction(null);
+    if (
+      partial &&
+      state.currentChatId === op.conversationId &&
+      !state.secretsLocked
+    ) {
+      const answer: ChatMessage = {
+        id: uid(),
+        role: "assistant",
+        content: partial,
+        timestamp: Date.now(),
+      };
+      const messages = [...state.messages, answer];
+      state.setMessages(messages);
+      void state
+        .saveConversation(messages, op.provider, op.model, op.conversationId)
+        .catch((error: unknown) => {
+          const current = useAppStore.getState();
+          if (
+            current.currentChatId === op.conversationId &&
+            current.messages === messages &&
+            !current.secretsLocked &&
+            !current.vaultBusy &&
+            !OperationService.current()
+          ) {
+            showError(error);
+          } else {
+            logger.error("chat", "Failed to save stopped response", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        });
+    }
   }, []);
 
   const runQuickAction = useCallback(
     async (
-      action: (promptFn: (text: string) => Promise<string>) => Promise<string>,
+      action: (
+        prompt: (text: string) => Promise<string>,
+        context: ActionContext
+      ) => Promise<string>,
       label: string
     ): Promise<string | null> => {
-      useAppStore
-        .getState()
-        .setPendingAction({ id: uid(), label, kind: "custom" });
-      useAppStore.getState().setError(null);
+      const state = useAppStore.getState();
       try {
-        ensureConfigured();
-        const config =
-          useAppStore.getState().providerConfigs[
-            useAppStore.getState().activeProvider
-          ];
-        const provider = createProvider(config);
-        const options = {
-          model: useAppStore.getState().activeModel,
-          temperature: useAppStore.getState().temperature,
-          maxTokens: useAppStore.getState().maxTokens,
-          reasoning: useAppStore.getState().reasoning,
-          systemPrompt: useAppStore.getState().systemPrompt || undefined,
+        configured();
+      } catch (error) {
+        showError(error);
+        return null;
+      }
+      if (OperationService.current()) return null;
+      const operation = OperationService.begin(
+        state.ensureChatId(),
+        state.activeProvider,
+        state.activeModel
+      );
+      if (!operation) return null;
+      const providerId = state.activeProvider;
+      const model = state.activeModel;
+      const provider = createProvider(state.providerConfigs[providerId]);
+      const options = {
+        model,
+        temperature: state.temperature,
+        maxTokens: state.maxTokens,
+        reasoning: state.reasoning,
+        systemPrompt: state.systemPrompt || undefined,
+      };
+      state.setPendingAction({ id: uid(), label, kind: "custom" });
+      state.setError(null);
+      try {
+        const context: ActionContext = {
+          signal: operation.signal,
+          assertCurrent: () => operation.assertCurrent(),
+          reportTruncation: () => {
+            if (stillCurrent(operation))
+              useAppStore.getState().setError("errors.contextTruncated");
+          },
         };
-        const promptFn = (text: string) =>
-          provider.chat(
+        const result = await action(async (text) => {
+          operation.assertCurrent();
+          const response = await provider.chat(
             [{ id: uid(), role: "user", content: text, timestamp: Date.now() }],
-            options
+            options,
+            undefined,
+            operation.signal
           );
-        const result = await action(promptFn);
-        const assistantMessage: ChatMessage = {
+          operation.assertCurrent();
+          return response;
+        }, context);
+        operation.assertCurrent();
+        const answer: ChatMessage = {
           id: uid(),
           role: "assistant",
           content: result,
           timestamp: Date.now(),
         };
-        useAppStore.getState().appendMessage(assistantMessage);
-        await useAppStore.getState().persist();
-        useAppStore.getState().setHistory(await HistoryService.listChats());
+        const messages = [...useAppStore.getState().messages, answer];
+        useAppStore.getState().setMessages(messages);
+        await state.saveConversation(
+          messages,
+          providerId,
+          model,
+          operation.conversationId
+        );
         return result;
       } catch (error) {
-        logger.error("chat", "quick action failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        useAppStore.getState().setError(
-          friendlyError(error, {
-            provider: useAppStore.getState().activeProvider,
-            onWeb: getPlatform() === "web",
-          })
-        );
+        if (stillCurrent(operation)) {
+          if (
+            error instanceof Error &&
+            error.name === "ActionConflictError" &&
+            "result" in error &&
+            typeof error.result === "string"
+          ) {
+            const answer: ChatMessage = {
+              id: uid(),
+              role: "assistant",
+              content: error.result,
+              timestamp: Date.now(),
+            };
+            const messages = [...useAppStore.getState().messages, answer];
+            useAppStore.getState().setMessages(messages);
+            useAppStore.getState().setError("errors.editConflict");
+            try {
+              await state.saveConversation(
+                messages,
+                providerId,
+                model,
+                operation.conversationId
+              );
+            } catch (saveError) {
+              if (stillCurrent(operation)) {
+                logger.error("chat", "Failed to save conflicting response", {
+                  error:
+                    saveError instanceof Error
+                      ? saveError.message
+                      : String(saveError),
+                });
+                useAppStore.getState().setError("errors.conflictSaveFailed");
+              }
+            }
+          } else showError(error);
+        }
         return null;
       } finally {
-        useAppStore.getState().setPendingAction(null);
+        if (stillCurrent(operation))
+          useAppStore.getState().setPendingAction(null);
+        OperationService.finish(operation);
       }
     },
-    [ensureConfigured]
+    []
   );
 
   const insertLastAnswer = useCallback(async (): Promise<boolean> => {
-    const messages = useAppStore.getState().messages;
-    const last = [...messages].reverse().find((m) => m.role === "assistant");
+    const last = [...useAppStore.getState().messages]
+      .reverse()
+      .find((m) => m.role === "assistant");
     if (!last) return false;
     try {
       await insertTextAtSelection(last.content);
@@ -241,6 +361,7 @@ export function useChat() {
 
   return {
     sendMessage,
+    submitMessage,
     stopStreaming,
     regenerateLast,
     runQuickAction,
