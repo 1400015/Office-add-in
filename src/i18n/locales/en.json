@@ -27,7 +27,8 @@
       "document": "document",
       "range": "selected range",
       "slide": "current slide"
-    }
+    },
+    "incomplete": "Incomplete response. Review the content before using it, or regenerate it."
   },
   "selectors": {
     "provider": "Provider",
@@ -35,7 +36,9 @@
     "reasoning": "Reasoning",
     "refreshModels": "Refresh models",
     "modelsFallback": "The current model list contains suggestions or cached results because the provider could not be reached.",
-    "noModels": "No models are available for this provider."
+    "noModels": "No models are available for this provider.",
+    "modelCompatibilityUnknown": "Chat compatibility unconfirmed",
+    "chooseCompatibleModel": "Select a model. Chat compatibility could not be confirmed for the remaining models."
   },
   "settings": {
     "providers": "Providers",
@@ -185,7 +188,15 @@
     "emptyResponse": "The provider returned an empty response. Try again.",
     "locked": "Unlock the passphrase before using the assistant.",
     "contextTruncated": "Only part of the selected content was sent because it exceeds the context limit.",
-    "notReady": "Settings are still loading. Please wait."
+    "notReady": "Settings are still loading. Please wait.",
+    "incompleteResponse": "The response did not complete. Received content is in the chat and was not applied automatically to the document.",
+    "incompleteSaveFailed": "The response is incomplete. It is visible in the chat, but could not be saved to history.",
+    "historyDeleteFailed": "The conversation could not be deleted. Try again.",
+    "historyClearFailed": "History could not be cleared. Try again.",
+    "modelsLoading": "The model list is updating. Please wait before starting a request.",
+    "modelCatalogFailed": "Models could not be loaded. Refresh the list in the Chat tab and try again.",
+    "presentationPartial": "The presentation may have been created only in part. The full plan is in the chat; check the slides before retrying.",
+    "presentationPartialSaveFailed": "The presentation may have been created only in part. The full plan is in the chat but could not be saved to history. Check the slides before retrying."
   },
   "common": {
     "loading": "Loading...",

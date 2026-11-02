@@ -188,16 +188,23 @@ export async function generateOfficeScript(
   );
 }
 
-export async function insertTextInCell(text: string): Promise<void> {
+export async function insertTextInCell(
+  text: string,
+  action?: ActionContext
+): Promise<void> {
+  action?.assertCurrent();
   const payload = text.trim();
   if (!payload) return;
   await Excel.run(async (context) => {
+    action?.assertCurrent();
     const cell = context.workbook.getSelectedRange().getCell(0, 0);
     if (payload.startsWith("=")) {
       cell.formulas = [[payload.split("\n")[0] ?? payload]];
     } else {
       cell.values = [[payload]];
     }
+    action?.assertCurrent();
     await context.sync();
   });
+  action?.assertCurrent();
 }

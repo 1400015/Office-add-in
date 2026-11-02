@@ -13,6 +13,7 @@ import {
 } from "../services/HttpService";
 import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 interface GeminiPart {
   text?: string;
@@ -23,7 +24,11 @@ interface GeminiContent {
 }
 
 interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+  candidates?: Array<{
+    content?: { parts?: GeminiPart[] };
+    finishReason?: string;
+  }>;
+  promptFeedback?: { blockReason?: string };
   error?: { message?: string };
 }
 
@@ -153,6 +158,17 @@ export class GeminiProvider extends BaseProvider {
           emitted = true;
           onToken(text);
         }
+        if (parsed.promptFeedback?.blockReason)
+          assertResponseComplete(
+            this.id,
+            "",
+            parsed.promptFeedback.blockReason,
+            []
+          );
+        const reason = parsed.candidates?.[0]?.finishReason;
+        assertResponseComplete(this.id, "", reason, ["STOP"]);
+        if (reason === "STOP") return "stop";
+        return undefined;
       },
     });
     if (!emitted)
@@ -169,6 +185,19 @@ export class GeminiProvider extends BaseProvider {
     const text = response.candidates?.[0]?.content?.parts
       ?.map((p) => p.text ?? "")
       .join("");
+    if (response.promptFeedback?.blockReason)
+      assertResponseComplete(
+        this.id,
+        text ?? "",
+        response.promptFeedback.blockReason,
+        []
+      );
+    assertResponseComplete(
+      this.id,
+      text ?? "",
+      response.candidates?.[0]?.finishReason,
+      ["STOP"]
+    );
     if (!text) {
       throw new Error("Gemini returned an empty response");
     }

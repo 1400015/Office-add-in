@@ -5,6 +5,11 @@ import {
   type ProviderConfig,
 } from "../types";
 import { httpRequest } from "./HttpService";
+import { abortError } from "./abort";
+import {
+  chatCompatibility,
+  type CatalogModelMetadata,
+} from "./modelCompatibility";
 
 function requestDetails(
   config: ProviderConfig,
@@ -50,12 +55,11 @@ function invalid(config: ProviderConfig): never {
   );
 }
 
-type ModelRow = {
+type ModelRow = CatalogModelMetadata & {
   id?: unknown;
   name?: unknown;
   display_name?: unknown;
   displayName?: unknown;
-  supportedGenerationMethods?: unknown;
 };
 type CatalogPage = {
   data?: unknown;
@@ -66,11 +70,17 @@ type CatalogPage = {
   error?: unknown;
 };
 
-export async function fetchProviderModels(
+interface CatalogEntry {
+  id: string;
+  name: string;
+  metadata: ModelRow;
+}
+
+async function readCatalog(
   config: ProviderConfig,
   signal?: AbortSignal
-): Promise<AIModel[]> {
-  const entries: AIModel[] = [];
+): Promise<CatalogEntry[]> {
+  const entries: CatalogEntry[] = [];
   const seenModels = new Set<string>();
   const seenCursors = new Set<string>();
   let cursor = "";
@@ -89,12 +99,6 @@ export async function fetchProviderModels(
     if (!Array.isArray(raw)) invalid(config);
     for (const item of raw as ModelRow[]) {
       if (!item || typeof item !== "object") invalid(config);
-      if (
-        config.id === "gemini" &&
-        (!Array.isArray(item.supportedGenerationMethods) ||
-          !item.supportedGenerationMethods.includes("generateContent"))
-      )
-        continue;
       const rawId =
         config.id === "gemini" || config.id === "ollama" ? item.name : item.id;
       if (typeof rawId !== "string" || !rawId.trim()) invalid(config);
@@ -108,7 +112,7 @@ export async function fetchProviderModels(
       entries.push({
         id,
         name: typeof display === "string" && display ? display : id,
-        provider: config.id,
+        metadata: item,
       });
       seenModels.add(id);
     }
@@ -129,12 +133,68 @@ export async function fetchProviderModels(
   return entries;
 }
 
+async function ollamaCapabilities(
+  config: ProviderConfig,
+  entry: CatalogEntry,
+  signal?: AbortSignal
+): Promise<CatalogModelMetadata> {
+  if (Array.isArray(entry.metadata.capabilities)) return entry.metadata;
+  try {
+    // /api/tags includes embedding models too; /api/show describes whether a
+    // model can complete text. This reads metadata and never loads/generates.
+    const details = await httpRequest<CatalogModelMetadata>({
+      ...requestDetails(config, "/api/show", signal),
+      method: "POST",
+      body: { model: entry.id },
+    });
+    return details && typeof details === "object" ? details : entry.metadata;
+  } catch {
+    if (signal?.aborted) throw abortError();
+    // Older servers may not expose capabilities. Keep those entries marked
+    // unknown rather than inventing installed/compatible models.
+    return entry.metadata;
+  }
+}
+
+export async function fetchProviderModels(
+  config: ProviderConfig,
+  signal?: AbortSignal
+): Promise<AIModel[]> {
+  const catalog = await readCatalog(config, signal);
+  const models: AIModel[] = [];
+  // Bound metadata concurrency for local servers with many installed models.
+  for (let offset = 0; offset < catalog.length; offset += 4) {
+    if (signal?.aborted) throw abortError();
+    const batch = await Promise.all(
+      catalog.slice(offset, offset + 4).map(async (entry) => {
+        const metadata =
+          config.id === "ollama"
+            ? await ollamaCapabilities(config, entry, signal)
+            : entry.metadata;
+        const compatibility = chatCompatibility(config.id, entry.id, metadata);
+        if (compatibility === "unsupported") return null;
+        return {
+          id: entry.id,
+          name: entry.name,
+          provider: config.id,
+          chatCompatibility: compatibility,
+        } satisfies AIModel;
+      })
+    );
+    if (signal?.aborted) throw abortError();
+    for (const model of batch) if (model) models.push(model);
+  }
+  return models;
+}
+
 export async function probeProviderConnection(
   config: ProviderConfig,
   signal?: AbortSignal
 ): Promise<{ modelCount?: number }> {
   if (config.id !== "openrouter")
-    return { modelCount: (await fetchProviderModels(config, signal)).length };
+    // Probe endpoint/authentication independently from chat compatibility. A
+    // reachable Ollama server with only embedding models still passes a probe.
+    return { modelCount: (await readCatalog(config, signal)).length };
   const response = await httpRequest<{ data?: unknown; error?: unknown }>(
     requestDetails(config, "/auth/key", signal)
   );

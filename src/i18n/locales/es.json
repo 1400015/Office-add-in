@@ -27,7 +27,8 @@
       "document": "documento",
       "range": "rango seleccionado",
       "slide": "diapositiva actual"
-    }
+    },
+    "incomplete": "Respuesta incompleta. Revisa el contenido antes de utilizarlo o vuelve a generarlo."
   },
   "selectors": {
     "provider": "Proveedor",
@@ -35,7 +36,9 @@
     "reasoning": "Razonamiento",
     "refreshModels": "Actualizar modelos",
     "modelsFallback": "La lista contiene sugerencias o resultados guardados porque no se pudo contactar con el proveedor.",
-    "noModels": "No hay modelos disponibles para este proveedor."
+    "noModels": "No hay modelos disponibles para este proveedor.",
+    "modelCompatibilityUnknown": "Compatibilidad con chat sin confirmar",
+    "chooseCompatibleModel": "Selecciona un modelo. No se pudo confirmar la compatibilidad con chat de los modelos restantes."
   },
   "settings": {
     "providers": "Proveedores",
@@ -185,7 +188,15 @@
     "emptyResponse": "El proveedor devolvió una respuesta vacía. Inténtalo de nuevo.",
     "locked": "Desbloquea la frase de contraseña antes de usar el asistente.",
     "contextTruncated": "Solo se envió parte del contenido seleccionado porque supera el límite de contexto.",
-    "notReady": "La configuración aún se está cargando. Espera un momento."
+    "notReady": "La configuración aún se está cargando. Espera un momento.",
+    "incompleteResponse": "La respuesta no se completó. El contenido recibido está en el chat y no se aplicó automáticamente al documento.",
+    "incompleteSaveFailed": "La respuesta está incompleta. Está visible en el chat, pero no se pudo guardar en el historial.",
+    "historyDeleteFailed": "No se pudo eliminar la conversación. Inténtalo de nuevo.",
+    "historyClearFailed": "No se pudo borrar el historial. Inténtalo de nuevo.",
+    "modelsLoading": "La lista de modelos se está actualizando. Espera antes de iniciar una solicitud.",
+    "modelCatalogFailed": "No se pudieron cargar los modelos. Actualiza la lista en la pestaña Chat e inténtalo de nuevo.",
+    "presentationPartial": "La presentación puede haberse creado solo en parte. El plan completo está en el chat; revisa las diapositivas antes de repetir.",
+    "presentationPartialSaveFailed": "La presentación puede haberse creado solo en parte. El plan completo está en el chat, pero no se pudo guardar en el historial. Revisa las diapositivas antes de repetir."
   },
   "common": {
     "loading": "Cargando...",

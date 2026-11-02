@@ -17,6 +17,7 @@ interface Props {
   message: ChatMessage;
   isLastAssistant: boolean;
   onInsert: () => void;
+  insertDisabled?: boolean;
   onRegenerate?: () => void;
 }
 
@@ -24,6 +25,7 @@ export function MessageBubble({
   message,
   isLastAssistant,
   onInsert,
+  insertDisabled = false,
   onRegenerate,
 }: Props): JSX.Element {
   const { t } = useTranslation();
@@ -57,6 +59,11 @@ export function MessageBubble({
       ) : (
         <div>{message.content}</div>
       )}
+      {message.incomplete && (
+        <div className="warning-banner" role="status">
+          {t("chat.incomplete")}
+        </div>
+      )}
       {message.role === "assistant" && (
         <div className="message-actions">
           <Tooltip
@@ -87,6 +94,8 @@ export function MessageBubble({
                 size="small"
                 appearance="transparent"
                 icon={<ArrowDownload20Regular />}
+                disabled={insertDisabled}
+                aria-label={insertLabel}
                 onClick={onInsert}
               />
             </Tooltip>

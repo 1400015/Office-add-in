@@ -18,6 +18,8 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   timestamp: number;
+  /** Partial output retained for review; never apply it automatically. */
+  incomplete?: boolean;
 }
 
 export interface ChatHistory {
@@ -51,6 +53,7 @@ export interface AIModel {
   id: string;
   name: string;
   provider: ProviderId;
+  chatCompatibility?: "supported" | "unknown";
 }
 
 export interface ChatContext {
@@ -82,5 +85,17 @@ export class ConfigurationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ConfigurationError";
+  }
+}
+
+/** A provider produced partial output or stopped without confirming completion. */
+export class IncompleteResponseError extends ProviderError {
+  constructor(
+    provider: ProviderId,
+    readonly result: string,
+    readonly reason?: string
+  ) {
+    super(provider, "INCOMPLETE_RESPONSE", "Provider response is incomplete");
+    this.name = "IncompleteResponseError";
   }
 }

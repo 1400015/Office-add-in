@@ -1,5 +1,7 @@
 # Plano de implementação — estabilização completa do Office Universal AI
 
+> **Correções C1–C6:** implementadas e verificadas estaticamente conforme [IMPLEMENTATION_PLAN_SOL.md](IMPLEMENTATION_PLAN_SOL.md), com progresso e decisões registados. Os testes continuam adiados por indicação do utilizador; os ensaios reais permanecem pendentes. O documento abaixo conserva o histórico E1–E9.
+
 ## 1. Objetivo e ponto de partida
 
 Este plano foi executado no repositório `/workspace/Office-add-in` para corrigir os problemas identificados na análise de 30/10/2026. Uma revisão posterior acrescentou correções que aguardam testes, conforme solicitado pelo utilizador. O histórico de validação e as verificações pendentes estão em [VALIDATION_REPORT.md](VALIDATION_REPORT.md). As combinações com Office e fornecedores reais continuam pendentes.
@@ -283,3 +285,17 @@ Considerar **implementação concluída** apenas quando E1–E8 e os checks auto
 ## 6. Instrução de arranque para o executor
 
 > Lê `IMPLEMENTATION_PLAN.md` e executa E1–E9 pela ordem e dependências indicadas. Implementa as correções, regressões, traduções, documentação e CI; não te limites a repetir o plano. Mantém o documento atualizado com as etapas concluídas e cria o registo de validação. Resolve escolhas técnicas locais seguindo os contratos fixados. Conclui todo o trabalho possível no workspace e identifica com precisão qualquer validação externa que dependa de Office, plataformas ou credenciais indisponíveis. Não declares como testado o que apenas foi simulado.
+
+## 7. Correções da revisão após o merge
+
+Revisão implementada a partir de `af5a14e3e0b6d06c2bfdfe4509a20cc3810f6f8e`. O utilizador manteve os testes adiados. Esta lista regista implementação e revisão do código; a execução dos cenários continua pendente.
+
+- [x] R1 — Validar motivos de conclusão dos seis fornecedores e marcadores terminais dos streams. Conservar respostas parciais com metadata e aviso no chat/histórico; impedir aplicação automática de respostas declaradas incompletas.
+- [x] R2 — Retomar a migração das configurações protegidas e do histórico após ativação interrompida da frase-passe, antes de concluir o desbloqueio.
+- [x] R3 — Partilhar a leitura seletiva de elementos PowerPoint com texto; ignorar tipos incompatíveis e isolar placeholders sem texto.
+- [x] R4 — Incluir inserção manual e preparação de templates na coordenação/cancelamento desde antes do primeiro await.
+- [x] R5 — Classificar os modelos por compatibilidade com chat, excluir incompatíveis e exigir escolha explícita quando a capacidade não puder ser confirmada.
+- [x] R6 — Publicar eliminações do histórico só após confirmação do armazenamento; apresentar erros e impedir ações destrutivas repetidas enquanto pendentes.
+- [x] R7 — Rejeitar JSON com tipos ou contagens inválidos nas substituições PowerPoint; permitir fallback apenas para texto simples.
+- [x] Traduzir as mensagens novas nos cinco idiomas e atualizar README/INSTALL.
+- [ ] Validar os cenários de R1–R7 por testes automatizados e em ambientes reais, quando o utilizador retomar os testes. Os resultados das verificações estáticas constam de `VALIDATION_REPORT.md`.

@@ -19,6 +19,7 @@ import {
   probeProviderConnection,
 } from "../services/ProviderCatalog";
 import { PROVIDER_DEFINITIONS } from "../config/providers";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 export interface NormalizedMessage {
   role: "system" | "user" | "assistant";
@@ -89,6 +90,17 @@ export abstract class BaseProvider {
   ): Record<string, unknown>;
 
   protected abstract extractChatResponse(data: unknown): string;
+
+  protected extractStreamText(content: unknown): string {
+    if (content === undefined || content === null) return "";
+    if (typeof content !== "string")
+      throw new ProviderError(
+        this.id,
+        "INVALID_RESPONSE",
+        "Provider returned invalid text content"
+      );
+    return content;
+  }
 
   protected requestHeaders(): Record<string, string> {
     const headers = { ...this.buildHeaders() };
@@ -165,13 +177,20 @@ export abstract class BaseProvider {
       format: "sse",
       onPayload: (raw) => {
         const data = parseStreamPayload<{
-          choices?: Array<{ delta?: { content?: string } }>;
+          choices?: Array<{
+            delta?: { content?: unknown; refusal?: string };
+            finish_reason?: string | null;
+          }>;
         }>(raw, this.id);
-        const token = data.choices?.[0]?.delta?.content;
+        const choice = data.choices?.[0];
+        const token = this.extractStreamText(choice?.delta?.content);
         if (token) {
           emitted = true;
           onToken(token);
         }
+        assertResponseComplete(this.id, "", choice?.finish_reason, ["stop"]);
+        if (choice?.delta?.refusal)
+          assertResponseComplete(this.id, "", "refusal", ["stop"]);
       },
     });
     if (!emitted)

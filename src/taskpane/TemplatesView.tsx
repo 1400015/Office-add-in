@@ -20,9 +20,10 @@ import { useChat } from "../hooks/useChat";
 
 export function TemplatesView(): JSX.Element {
   const { t, i18n } = useTranslation();
-  const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
-  const persist = useAppStore((s) => s.persist);
   const setView = useAppStore((s) => s.setView);
+  const catalogStatus = useAppStore((s) => s.modelCatalog.status);
+  const activeModel = useAppStore((s) => s.activeModel);
+  const modelsReady = catalogStatus === "ready" && Boolean(activeModel);
   const busy = useAppStore(
     (s) =>
       s.isStreaming ||
@@ -39,26 +40,25 @@ export function TemplatesView(): JSX.Element {
     prompt: string,
     system?: string
   ): Promise<void> => {
-    if (busy) return;
-    if (system) {
-      setSystemPrompt(system);
-      try {
-        await persist();
-      } catch {
-        useAppStore.getState().setError("errors.generic");
-        setView("chat");
-        return;
-      }
-    }
-    setView("chat");
-    const request = submitMessage(prompt);
+    if (busy || !modelsReady) return;
+    const request = submitMessage(prompt, system);
     if (!request) return;
+    setView("chat");
     setUsed(templateId);
     await request;
   };
 
   return (
     <div className="templates-grid">
+      {!busy && !modelsReady && (
+        <div className="warning-banner">
+          {t(
+            catalogStatus === "idle" || catalogStatus === "loading"
+              ? "common.loading"
+              : "errors.noModel"
+          )}
+        </div>
+      )}
       <Accordion
         collapsible
         multiple
@@ -93,7 +93,7 @@ export function TemplatesView(): JSX.Element {
                       <Button
                         size="small"
                         appearance="primary"
-                        disabled={busy}
+                        disabled={busy || !modelsReady}
                         onClick={() => void onUse(tpl.id, prompt, system)}
                       >
                         {used === tpl.id
