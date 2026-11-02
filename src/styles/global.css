@@ -80,6 +80,13 @@ body {
   white-space: normal;
 }
 
+/* Suspense fallback while the lazy markdown chunk loads: same typography as
+   the rendered markdown so the first paint does not shift layout. */
+.message-markdown-plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .message-markdown p {
   margin: 0 0 0.45em;
 }
