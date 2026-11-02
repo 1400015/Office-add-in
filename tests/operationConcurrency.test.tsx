@@ -69,8 +69,27 @@ beforeEach(() => {
     providerConfigs: { ...state.providerConfigs, mistral: config },
     activeProvider: "mistral",
     activeModel: "test-model",
+    officeReady: true,
     hydrated: true,
+    vaultBusy: false,
     secretsLocked: false,
+    modelCatalog: {
+      status: "ready" as const,
+      generation: state.modelCatalog.generation,
+      requestId: state.modelCatalog.requestId,
+      provider: "mistral" as const,
+      configRevision: state.modelCatalog.configRevision,
+      reason: state.modelCatalog.reason,
+      models: [
+        {
+          id: "test-model",
+          name: "test-model",
+          provider: "mistral" as const,
+          chatCompatibility: "supported" as const,
+        },
+      ],
+      source: "remote" as const,
+    },
   }));
 });
 afterEach(() => {

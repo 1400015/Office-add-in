@@ -22,6 +22,7 @@ interface FakeShape {
   name: string;
   type: string;
   textFrame: { textRange: { text: string } };
+  load: (props?: string) => void;
   delete: () => void;
 }
 
@@ -29,11 +30,11 @@ interface FakeSlide {
   id: string;
   shapes: {
     items: FakeShape[];
-    load: () => void;
+    load: (props?: string) => void;
     getItem: (id: string) => FakeShape;
-    addTextBox: (text: string) => FakeShape;
+    addTextBox: (text: string, options?: unknown) => FakeShape;
   };
-  load: () => void;
+  load: (props?: string) => void;
 }
 
 function shape(id: string, text: string, type = "TextBox"): FakeShape {
@@ -42,6 +43,7 @@ function shape(id: string, text: string, type = "TextBox"): FakeShape {
     name: "",
     type,
     textFrame: { textRange: { text } },
+    load: () => {},
     delete: () => {},
   };
   return created;
@@ -73,7 +75,7 @@ function slide(id: string, texts: string[]): FakeSlide {
 function installPowerPoint(initial: FakeSlide[]): { slides: FakeSlide[] } {
   const slides = initial;
   const presentation = {
-    slides,
+    slides: null as unknown,
     getSelectedSlides: () => ({
       items: slides[0] ? [slides[0]] : [],
       load: () => {},
@@ -83,6 +85,7 @@ function installPowerPoint(initial: FakeSlide[]): { slides: FakeSlide[] } {
       | undefined,
   };
   const api = {
+    items: slides as FakeSlide[],
     getCount: () => ({ value: slides.length }),
     getItem: (id: string) => {
       const found = slides.find((item) => item.id === id);
@@ -96,24 +99,13 @@ function installPowerPoint(initial: FakeSlide[]): { slides: FakeSlide[] } {
     },
     add: () => {
       const created = slide(`slide-${slides.length + 1}`, []);
-      const placeholder = shape(
-        `${created.id}-ph`,
-        "Click to add title",
-        "Placeholder"
-      );
-      placeholder.delete = () => {
-        const index = created.shapes.items.indexOf(placeholder);
-        if (index >= 0) created.shapes.items.splice(index, 1);
-      };
-      created.shapes.items.unshift(placeholder);
       slides.push(created);
       return created;
     },
     load: () => {},
   };
-  Object.assign(presentation, { slides: api });
   // Keep the array reachable for assertions via the same objects inside api.
-  (api as { items?: FakeSlide[] }).items = slides;
+  (api as { items: FakeSlide[] }).items = slides;
 
   vi.stubGlobal("PowerPoint", {
     run: async (callback: (context: unknown) => Promise<unknown>) =>

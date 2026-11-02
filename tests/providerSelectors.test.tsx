@@ -8,10 +8,11 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import "../src/i18n";
 import { ProviderSelectors } from "../src/taskpane/components/ProviderSelectors";
 import { useAppStore } from "../src/store/useAppStore";
+import { useModelCatalog } from "../src/hooks/useModelCatalog";
 import {
   ModelService,
   type ModelListResult,
@@ -39,7 +40,12 @@ function deferred<T>() {
   return { promise, resolve };
 }
 function model(id: string, provider: ProviderId): ModelListResult {
-  return { source: "remote", models: [{ id, name: id, provider }] };
+  return {
+    source: "remote",
+    models: [
+      { id, name: id, provider, chatCompatibility: "supported" as const },
+    ],
+  };
 }
 
 beforeAll(() => {
@@ -78,6 +84,9 @@ describe("ProviderSelectors", () => {
     vi.mocked(ModelService.listModels).mockImplementation((config) =>
       config.id === "mistral" ? old.promise : current.promise
     );
+    // useModelCatalog drives loadModelCatalog on mount/provider change;
+    // mounting it alongside the component reproduces the Taskpane wiring.
+    renderHook(() => useModelCatalog());
     render(<ProviderSelectors />);
     await waitFor(() =>
       expect(ModelService.listModels).toHaveBeenCalledTimes(1)
@@ -102,6 +111,7 @@ describe("ProviderSelectors", () => {
   it("ignores a list that resolves after the vault becomes busy", async () => {
     const pending = deferred<ModelListResult>();
     vi.mocked(ModelService.listModels).mockReturnValue(pending.promise);
+    renderHook(() => useModelCatalog());
     render(<ProviderSelectors />);
     await waitFor(() => expect(ModelService.listModels).toHaveBeenCalledOnce());
     act(() => useAppStore.setState({ vaultBusy: true }));

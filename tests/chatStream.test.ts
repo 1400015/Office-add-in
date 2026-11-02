@@ -112,7 +112,7 @@ describe("provider streaming", () => {
   );
   it("maps Gemini candidates and does not put its key in the URL", async () => {
     respond(
-      'data: {"candidates":[{"content":{"parts":[{"text":"Olá"}]}}]}\n\n'
+      'data: {"candidates":[{"content":{"parts":[{"text":"Olá"}]},"finishReason":"STOP"}]}\n\n'
     );
     const tokens: string[] = [];
     await provider("gemini").chatStream(messages, options, (token) =>
