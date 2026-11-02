@@ -10,9 +10,11 @@ import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
 import { httpStream, parseStreamPayload } from "../services/HttpService";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 interface ClaudeResponse {
   content?: Array<{ type: string; text?: string }>;
+  stop_reason?: string | null;
   error?: { message?: string };
 }
 
@@ -93,6 +95,10 @@ export class ClaudeProvider extends BaseProvider {
       ?.filter((c) => c.type === "text")
       .map((c) => c.text ?? "")
       .join("");
+    assertResponseComplete(this.id, text ?? "", response.stop_reason, [
+      "end_turn",
+      "stop_sequence",
+    ]);
     if (!text) {
       throw new Error("Claude returned an empty response");
     }
@@ -127,7 +133,7 @@ export class ClaudeProvider extends BaseProvider {
       onPayload: (payload) => {
         const parsed = parseStreamPayload<{
           type?: string;
-          delta?: { type?: string; text?: string };
+          delta?: { type?: string; text?: string; stop_reason?: string | null };
         }>(payload, this.id);
         if (
           parsed.type === "content_block_delta" &&
@@ -137,6 +143,11 @@ export class ClaudeProvider extends BaseProvider {
           emitted = true;
           onToken(parsed.delta.text);
         }
+        if (parsed.type === "message_delta")
+          assertResponseComplete(this.id, "", parsed.delta?.stop_reason, [
+            "end_turn",
+            "stop_sequence",
+          ]);
         if (parsed.type === "message_stop") return "stop";
         return undefined;
       },

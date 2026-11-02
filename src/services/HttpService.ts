@@ -1,6 +1,10 @@
 import { RETRY_ATTEMPTS, RETRY_BASE_DELAY_MS } from "../constants";
 import { proxyFailure } from "../proxy/failures";
-import { ProviderError, type ProviderId } from "../types";
+import {
+  IncompleteResponseError,
+  ProviderError,
+  type ProviderId,
+} from "../types";
 import { consumeSseStream, consumeNdjsonStream } from "./sse";
 import { logger } from "./LoggerService";
 import { abortableSleep, abortError, requestSignal } from "./abort";
@@ -155,14 +159,24 @@ export async function httpStream(req: StreamRequest): Promise<void> {
         response.status
       );
     }
+    let completed = false;
     const source = {
       body: response.body,
       onFrame: (payload: string) => {
         if (req.signal?.aborted) throw abortError();
         if (request.timedOut())
           throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
-        if (payload === "[DONE]") return "stop";
-        return req.onPayload(payload);
+        if (
+          payload === "[DONE]" &&
+          req.format === "sse" &&
+          ["openai", "mistral", "openrouter"].includes(req.provider)
+        ) {
+          completed = true;
+          return "stop";
+        }
+        const result = req.onPayload(payload);
+        if (result === "stop") completed = true;
+        return result;
       },
     };
     if (req.format === "ndjson") await consumeNdjsonStream(source);
@@ -170,6 +184,8 @@ export async function httpStream(req: StreamRequest): Promise<void> {
     if (req.signal?.aborted) throw abortError();
     if (request.timedOut())
       throw new ProviderError(req.provider, "TIMEOUT", "Stream timeout");
+    if (!completed)
+      throw new IncompleteResponseError(req.provider, "", "stream-ended");
   } catch (error) {
     if (req.signal?.aborted) throw abortError();
     if (request.timedOut())

@@ -115,8 +115,16 @@ Open the **Settings** tab inside the add-in:
 - **Ollama** only works in **Office Desktop** (the browser blocks `http://localhost` from the Office web taskpane).
 - **Test connection** contacts the configured endpoint and checks authentication where applicable. It does not generate a response or verify available quota. Suggested model lists may be shown when listing is unavailable; those suggestions do not prove connectivity. An Ollama server with no installed models returns an empty list.
 - Word replacement actions reject selections longer than 60,000 characters. If the original Word, Excel or PowerPoint content changes while an AI response is being generated, the response is shown in chat without overwriting the changed content.
+- Provider completion reasons are checked before applying generated text. Responses reported as truncated or blocked are kept in chat with an incomplete-response warning; they do not replace document content automatically. Streams also require the provider's completion marker. Older compatible endpoints that omit completion metadata in non-stream responses cannot provide this guarantee.
+- Model lists exclude models known to be incompatible with text chat. Models whose compatibility cannot be confirmed are labelled and require an explicit selection or a saved preference. Connection checks verify endpoint/authentication separately from model compatibility.
+- Model availability is updated across all tabs. Changing the active endpoint, credentials or proxy temporarily disables new requests until the list is reconciled; saved model preferences are retained. Templates and ribbon commands follow the same rule, and errors appear in the current tab. An accepted request keeps its original endpoint and model.
+- Manual insertion and templates share the content-operation coordinator, including Stop, New chat and vault locking. History entries are removed from the interface after storage confirms deletion; failures are shown for retry.
+- PowerPoint text actions read supported text shapes and skip pictures and other shapes without editable text. Text inside groups, tables and charts is not traversed by these actions.
+- PowerPoint creation identifies each new slide by ID and preserves inherited placeholders. Ambiguous creation stops and keeps the full plan in chat with a possible partial-creation warning; inspect the slides before retrying. Manual insertion keeps the initial slide or text target when the selection changes and never retries a failed write on another slide. Office does not provide atomic creation ownership under arbitrary coauthor edits; real-host validation remains pending.
 
 > ⚠️ **Security note**: Without a passphrase, API keys are only obfuscated in `OfficeRuntime.storage`. Set a passphrase in Settings to encrypt keys and chat history with a key that stays in memory for the session (it is not stored). Secrets are masked in the UI and redacted from logs.
+
+If passphrase setup is interrupted, the next successful unlock finishes protecting both stored provider credentials and history before enabling content operations.
 
 ## Internationalization (i18n)
 

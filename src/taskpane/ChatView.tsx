@@ -1,18 +1,7 @@
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-  Button,
-  Textarea,
-  MessageBar,
-  MessageBarBody,
-  MessageBarActions,
-  Spinner,
-} from "@fluentui/react-components";
-import {
-  Send20Regular,
-  Stop20Regular,
-  Dismiss20Regular,
-} from "@fluentui/react-icons";
+import { Button, Textarea, Spinner } from "@fluentui/react-components";
+import { Send20Regular, Stop20Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
 import { useChat } from "../hooks/useChat";
@@ -32,10 +21,9 @@ export function ChatView(): JSX.Element {
   const hydrated = useAppStore((s) => s.hydrated);
   const vaultBusy = useAppStore((s) => s.vaultBusy);
   const activeModel = useAppStore((s) => s.activeModel);
+  const modelsReady = useAppStore((s) => s.modelCatalog.status === "ready");
   const busy = isStreaming || pendingAction !== null;
   const streamingContent = useAppStore((s) => s.streamingContent);
-  const error = useAppStore((s) => s.error);
-  const setError = useAppStore((s) => s.setError);
   const { submitMessage, stopStreaming, insertLastAnswer, regenerateLast } =
     useChat();
 
@@ -51,7 +39,8 @@ export function ChatView(): JSX.Element {
       secretsLocked ||
       !hydrated ||
       vaultBusy ||
-      !activeModel
+      !activeModel ||
+      !modelsReady
     )
       return;
     const request = submitMessage(content);
@@ -92,12 +81,15 @@ export function ChatView(): JSX.Element {
             message={message}
             isLastAssistant={index === lastAssistantIndex}
             onInsert={() => void insertLastAnswer()}
+            insertDisabled={busy || secretsLocked || !hydrated || vaultBusy}
             onRegenerate={
               index === lastAssistantIndex &&
               !busy &&
               !secretsLocked &&
               hydrated &&
-              !vaultBusy
+              !vaultBusy &&
+              modelsReady &&
+              activeModel
                 ? () => void regenerateLast()
                 : undefined
             }
@@ -112,28 +104,6 @@ export function ChatView(): JSX.Element {
               {!streamingContent && <Spinner size="tiny" />}
             </div>
           )}
-
-        {error && (
-          <MessageBar intent="error">
-            <MessageBarBody>
-              {error === "noApiKey"
-                ? t("errors.noApiKey")
-                : error === "noModel"
-                  ? t("errors.noModel")
-                  : error.startsWith("errors.")
-                    ? t(error)
-                    : error}
-            </MessageBarBody>
-            <MessageBarActions>
-              <Button
-                appearance="transparent"
-                size="small"
-                icon={<Dismiss20Regular />}
-                onClick={() => setError(null)}
-              />
-            </MessageBarActions>
-          </MessageBar>
-        )}
       </div>
 
       <div className="chat-input-area">
@@ -169,7 +139,8 @@ export function ChatView(): JSX.Element {
               secretsLocked ||
               !hydrated ||
               vaultBusy ||
-              !activeModel
+              !activeModel ||
+              !modelsReady
             }
           >
             {t("chat.send")}

@@ -1,12 +1,21 @@
 import type { JSX } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Tab, TabList, Button, Spinner } from "@fluentui/react-components";
+import {
+  Tab,
+  TabList,
+  Button,
+  Spinner,
+  MessageBar,
+  MessageBarBody,
+  MessageBarActions,
+} from "@fluentui/react-components";
 import {
   Chat20Regular,
   Settings20Regular,
   History20Regular,
   Library20Regular,
   Add20Regular,
+  Dismiss20Regular,
 } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { ChatView } from "./ChatView";
@@ -23,6 +32,7 @@ const TemplatesView = lazy(() =>
 import { useAppStore } from "../store/useAppStore";
 import { useOfficeInit } from "../hooks/useOfficeInit";
 import { useRibbonCommands } from "../hooks/useRibbonCommands";
+import { useModelCatalog } from "../hooks/useModelCatalog";
 import type { AppView } from "../types";
 
 export function Taskpane(): JSX.Element {
@@ -31,8 +41,11 @@ export function Taskpane(): JSX.Element {
   const setView = useAppStore((s) => s.setView);
   const startNewChat = useAppStore((s) => s.startNewChat);
   const language = useAppStore((s) => s.language);
+  const error = useAppStore((s) => s.error);
+  const setError = useAppStore((s) => s.setError);
 
   const initializationFailed = useOfficeInit();
+  useModelCatalog();
   useRibbonCommands();
 
   useEffect(() => {
@@ -96,6 +109,29 @@ export function Taskpane(): JSX.Element {
           </Button>
         )}
       </div>
+
+      {error && (
+        <MessageBar intent="error">
+          <MessageBarBody>
+            {error === "noApiKey"
+              ? t("errors.noApiKey")
+              : error === "noModel"
+                ? t("errors.noModel")
+                : error.startsWith("errors.")
+                  ? t(error)
+                  : error}
+          </MessageBarBody>
+          <MessageBarActions>
+            <Button
+              appearance="transparent"
+              size="small"
+              icon={<Dismiss20Regular />}
+              aria-label={t("common.close")}
+              onClick={() => setError(null)}
+            />
+          </MessageBarActions>
+        </MessageBar>
+      )}
 
       <div className="app-body">
         {view === "chat" && <ChatView />}

@@ -22,7 +22,7 @@ const revisions = new Map<ProviderId, number>();
 const activeConfigs = new Map<ProviderId, ProviderConfig>();
 let modelWrites: Promise<void> = Promise.resolve();
 
-function sameConfig(a: ProviderConfig, b: ProviderConfig): boolean {
+export function sameConfig(a: ProviderConfig, b: ProviderConfig): boolean {
   return (
     a.id === b.id &&
     a.endpoint === b.endpoint &&
@@ -46,6 +46,7 @@ function fallback(config: ProviderConfig): ModelListResult {
             id,
             name: id,
             provider: config.id,
+            chatCompatibility: "supported" as const,
           })),
     source: "fallback",
     warningKey: "selectors.modelsFallback",
@@ -124,16 +125,20 @@ export const ModelService = {
 
   async setStoredActiveModel(
     provider: ProviderId,
-    model: string
+    model: string,
+    current: () => boolean = () => true
   ): Promise<void> {
     const operation = modelWrites
       .catch(() => {})
       .then(async () => {
+        if (!model || !current()) return;
         const stored =
           (await StorageService.getItem<Record<string, string>>(
             STORAGE_KEYS.activeModel
           )) ?? {};
+        if (!current()) return;
         stored[provider] = model;
+        if (!current()) return;
         await StorageService.setItem(STORAGE_KEYS.activeModel, stored);
       });
     modelWrites = operation;

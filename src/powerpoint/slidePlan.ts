@@ -78,27 +78,42 @@ export function parseAlignedStrings(
   if (originals.length === 0) {
     throw new Error("The active slide has no text.");
   }
+  const fenced = raw.match(/^\s*```(\w*)\s*\n?([\s\S]*?)```\s*$/);
+  const body = (fenced ? fenced[2]! : raw).trim();
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(extractJsonPayload(raw));
-    if (
-      Array.isArray(parsed) &&
-      parsed.length === originals.length &&
-      parsed.every((item) => typeof item === "string")
-    ) {
-      return (parsed as string[]).map((value, index) => {
-        const text = value.trim();
-        return text || originals[index]!;
-      });
-    }
+    parsed = JSON.parse(body);
   } catch (error) {
-    const jsonProblem =
-      error instanceof SyntaxError ||
-      (error instanceof Error && /JSON array/i.test(error.message));
-    if (!jsonProblem) throw error;
+    if (!(error instanceof SyntaxError)) throw error;
+    // A malformed/embedded array is still structured output. Never fall back
+    // to writing its JSON syntax over a single original text block.
+    if (body.includes("[") && body.includes("]") && !body.startsWith("{")) {
+      try {
+        parsed = JSON.parse(extractJsonPayload(raw));
+      } catch {
+        throw new Error("The AI did not return one text block per shape.");
+      }
+    } else {
+      const looksStructured =
+        /[{}]/.test(body) ||
+        body.includes("[") ||
+        body.includes("]") ||
+        body.startsWith('"') ||
+        fenced?.[1]?.toLowerCase() === "json" ||
+        raw.includes("```json");
+      if (originals.length === 1 && body && !looksStructured) return [body];
+      throw new Error("The AI did not return one text block per shape.");
+    }
   }
-  if (originals.length === 1) {
-    const plain = raw.replace(/```(?:json)?/gi, "").trim();
-    if (plain) return [plain];
+  if (
+    !Array.isArray(parsed) ||
+    parsed.length !== originals.length ||
+    !parsed.every((item) => typeof item === "string")
+  ) {
+    throw new Error("The AI did not return one text block per shape.");
   }
-  throw new Error("The AI did not return one text block per shape.");
+  return (parsed as string[]).map((value, index) => {
+    const text = value.trim();
+    return text || originals[index]!;
+  });
 }

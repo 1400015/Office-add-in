@@ -391,6 +391,20 @@ Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `h
 
 Um worker que lê `?key=` expõe a chave em logs. Não uses esse padrão.
 
+### Respostas incompletas e modelos compatíveis
+
+Quando o fornecedor indica que uma resposta foi cortada ou bloqueada, o conteúdo recebido fica no chat com um aviso e não substitui automaticamente o texto do documento. O streaming exige o marcador de conclusão do fornecedor. Endpoints compatíveis antigos que omitam os metadados de conclusão nas respostas sem streaming não permitem confirmar esse estado.
+
+A lista de modelos exclui modelos reconhecidamente incompatíveis com chat. Os de compatibilidade por confirmar ficam identificados e exigem escolha explícita ou uma preferência guardada. O teste de ligação continua a verificar o endpoint e a autenticação; não certifica a compatibilidade de cada modelo.
+
+A disponibilidade do modelo é atualizada em todos os separadores. Ao alterar o endpoint, a chave ou o proxy do fornecedor ativo, aguarda a reconciliação da lista antes de enviar um pedido, usar um template ou executar um comando do friso. A preferência guardada conserva-se durante essa atualização e os erros aparecem no separador aberto. Pedidos já aceites conservam o endpoint e o modelo originais.
+
+A inserção manual e os templates respeitam a operação em curso, Parar, Nova conversa e o bloqueio do cofre. Se a ativação da frase-passe for interrompida, o desbloqueio seguinte termina a proteção das credenciais e do histórico antes de permitir operações de conteúdo.
+
+No PowerPoint, as ações de texto ignoram imagens e elementos sem texto editável. Não percorrem texto dentro de grupos, tabelas ou gráficos.
+
+Na criação de apresentações, cada diapositivo novo é identificado pelo seu ID e os placeholders herdados são conservados. Se a identificação for ambígua ou ocorrer uma falha depois de começar a criação, o plano completo fica no chat com aviso de possível criação parcial; verifica a apresentação antes de repetir. A inserção manual conserva o destino inicial mesmo que mudes a seleção e não repete automaticamente uma escrita falhada noutro diapositivo. A API Office não oferece garantia atómica de propriedade da criação perante quaisquer edições simultâneas de coautores; a validação em hosts reais continua pendente.
+
 ---
 
 ## 7. Desinstalação
@@ -420,6 +434,8 @@ O add-in guarda dados no `OfficeRuntime.storage` e IndexedDB:
 1. Dentro do add-in: **History** → **Clear all**
 2. **Settings** → remover as API keys manualmente
 3. Para limpar tudo: fecha o Office e limpa os dados do WebView2/IE cache (Windows) ou do browser (Web)
+
+As conversas desaparecem da lista depois de o armazenamento confirmar a eliminação. Se houver uma falha, a lista é conservada e aparece uma mensagem para tentares novamente.
 
 ---
 

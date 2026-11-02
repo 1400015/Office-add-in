@@ -2,6 +2,7 @@ import { insertTextInCell } from "../excel/excelActions";
 import { readBoundedSelection } from "../excel/rangeSnapshot";
 import type { ActionContext } from "./ActionContext";
 import { insertTextOnSlide } from "../powerpoint/powerpointActions";
+import { loadTextShapes } from "../powerpoint/textShapes";
 import type { ChatContext, OfficeHost, OfficePlatform } from "../types";
 import { MAX_CONTEXT_CHARS } from "../constants";
 import { logger } from "./LoggerService";
@@ -166,13 +167,14 @@ async function getPowerPointContext(
 ): Promise<Pick<ChatContext, "selectionText" | "contextType">> {
   return PowerPoint.run(async (context) => {
     const selected = context.presentation.getSelectedSlides();
-    selected.load("items/shapes/items/textFrame/textRange");
+    selected.load("items/id");
     await context.sync();
     action?.assertCurrent();
     const slide = selected.items[0];
     if (!slide) return { contextType: "none" as const };
-    const text = slide.shapes.items
-      .map((shape) => shape.textFrame?.textRange?.text ?? "")
+    const shapes = await loadTextShapes(context, slide.shapes, action);
+    const text = shapes
+      .map((shape) => shape.textFrame.textRange.text)
       .join("\n")
       .trim();
     if (text.length === 0) return { contextType: "none" as const };
@@ -184,21 +186,30 @@ async function getPowerPointContext(
   });
 }
 
-export async function insertTextAtSelection(text: string): Promise<void> {
+export async function insertTextAtSelection(
+  text: string,
+  action?: ActionContext
+): Promise<void> {
+  action?.assertCurrent();
   const host = getHost();
   if (host === "word") {
     await Word.run(async (context) => {
+      action?.assertCurrent();
       context.document.getSelection().insertText(text, Word.InsertLocation.end);
+      action?.assertCurrent();
       await context.sync();
     });
+    action?.assertCurrent();
     return;
   }
   if (host === "excel") {
-    await insertTextInCell(text);
+    await insertTextInCell(text, action);
+    action?.assertCurrent();
     return;
   }
   if (host === "powerpoint") {
-    await insertTextOnSlide(text);
+    await insertTextOnSlide(text, action);
+    action?.assertCurrent();
     return;
   }
   throw new Error(`Insertion is not supported in ${host}`);

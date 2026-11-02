@@ -6,9 +6,13 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 interface OpenAIResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{
+    message?: { content?: string; refusal?: string };
+    finish_reason?: string | null;
+  }>;
   error?: { message?: string };
 }
 
@@ -62,6 +66,14 @@ export class OpenAIProvider extends BaseProvider {
     this.assertOk(data);
     const response = data as OpenAIResponse;
     const content = response.choices?.[0]?.message?.content;
+    assertResponseComplete(
+      this.id,
+      content ?? "",
+      response.choices?.[0]?.finish_reason,
+      ["stop"]
+    );
+    if (response.choices?.[0]?.message?.refusal)
+      assertResponseComplete(this.id, content ?? "", "refusal", ["stop"]);
     if (!content) {
       throw new Error("OpenAI returned an empty response");
     }

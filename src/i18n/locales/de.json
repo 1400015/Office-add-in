@@ -27,7 +27,8 @@
       "document": "Dokument",
       "range": "ausgewählter Bereich",
       "slide": "aktuelle Folie"
-    }
+    },
+    "incomplete": "Unvollständige Antwort. Prüfen Sie den Inhalt vor der Verwendung oder lassen Sie ihn erneut erstellen."
   },
   "selectors": {
     "provider": "Anbieter",
@@ -35,7 +36,9 @@
     "reasoning": "Denkmodus",
     "refreshModels": "Modelle aktualisieren",
     "modelsFallback": "Die Liste enthält Vorschläge oder gespeicherte Ergebnisse, da der Anbieter nicht erreichbar ist.",
-    "noModels": "Für diesen Anbieter sind keine Modelle verfügbar."
+    "noModels": "Für diesen Anbieter sind keine Modelle verfügbar.",
+    "modelCompatibilityUnknown": "Chat-Kompatibilität unbestätigt",
+    "chooseCompatibleModel": "Wählen Sie ein Modell. Die Chat-Kompatibilität der übrigen Modelle konnte nicht bestätigt werden."
   },
   "settings": {
     "providers": "Anbieter",
@@ -185,7 +188,15 @@
     "emptyResponse": "Der Anbieter hat eine leere Antwort geliefert. Versuche es erneut.",
     "locked": "Entsperre die Passphrase, bevor du den Assistenten verwendest.",
     "contextTruncated": "Nur ein Teil des ausgewählten Inhalts wurde gesendet, da das Kontextlimit überschritten wurde.",
-    "notReady": "Die Einstellungen werden noch geladen. Bitte warte einen Moment."
+    "notReady": "Die Einstellungen werden noch geladen. Bitte warte einen Moment.",
+    "incompleteResponse": "Die Antwort wurde nicht abgeschlossen. Der empfangene Inhalt steht im Chat und wurde nicht automatisch in das Dokument übernommen.",
+    "incompleteSaveFailed": "Die Antwort ist unvollständig. Sie ist im Chat sichtbar, konnte aber nicht im Verlauf gespeichert werden.",
+    "historyDeleteFailed": "Die Unterhaltung konnte nicht gelöscht werden. Versuchen Sie es erneut.",
+    "historyClearFailed": "Der Verlauf konnte nicht gelöscht werden. Versuchen Sie es erneut.",
+    "modelsLoading": "Die Modellliste wird aktualisiert. Bitte warten Sie, bevor Sie eine Anfrage starten.",
+    "modelCatalogFailed": "Die Modelle konnten nicht geladen werden. Aktualisieren Sie die Liste im Chat-Tab und versuchen Sie es erneut.",
+    "presentationPartial": "Die Präsentation wurde möglicherweise nur teilweise erstellt. Der vollständige Plan steht im Chat. Prüfen Sie die Folien vor einem erneuten Versuch.",
+    "presentationPartialSaveFailed": "Die Präsentation wurde möglicherweise nur teilweise erstellt. Der vollständige Plan steht im Chat, konnte aber nicht im Verlauf gespeichert werden. Prüfen Sie die Folien vor einem erneuten Versuch."
   },
   "common": {
     "loading": "Wird geladen ...",

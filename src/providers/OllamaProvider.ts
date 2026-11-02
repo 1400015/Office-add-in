@@ -8,9 +8,16 @@ import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
 import { httpStream, parseStreamPayload } from "../services/HttpService";
 import { ProviderError } from "../types";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 interface OllamaResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{
+    message?: { content?: string };
+    finish_reason?: string | null;
+  }>;
+  message?: { content?: string };
+  done?: boolean;
+  done_reason?: string;
   error?: { message?: string };
 }
 
@@ -67,8 +74,15 @@ export class OllamaProvider extends BaseProvider {
     this.assertOk(data);
     const response = data as OllamaResponse;
     const content =
-      response.choices?.[0]?.message?.content ??
-      (data as { message?: { content?: string } }).message?.content;
+      response.choices?.[0]?.message?.content ?? response.message?.content;
+    assertResponseComplete(
+      this.id,
+      content ?? "",
+      response.done_reason ?? response.choices?.[0]?.finish_reason,
+      ["stop"]
+    );
+    if (response.done === false)
+      assertResponseComplete(this.id, content ?? "", "not-done", ["stop"]);
     if (!content) {
       throw new Error("Ollama returned an empty response");
     }
@@ -100,11 +114,13 @@ export class OllamaProvider extends BaseProvider {
         const frame = parseStreamPayload<{
           message?: { content?: string };
           done?: boolean;
+          done_reason?: string;
         }>(payload, this.id);
         if (frame.message?.content) {
           emitted = true;
           onToken(frame.message.content);
         }
+        assertResponseComplete(this.id, "", frame.done_reason, ["stop"]);
         if (frame.done) return "stop";
         return undefined;
       },

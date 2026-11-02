@@ -6,9 +6,15 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
+import { assertResponseComplete } from "../services/responseCompletion";
+import { ProviderError } from "../types";
+import { normalizeMistralText } from "./mistralText";
 
 interface MistralResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{
+    message?: { content?: unknown };
+    finish_reason?: string | null;
+  }>;
   error?: { message?: string };
 }
 
@@ -61,10 +67,26 @@ export class MistralProvider extends BaseProvider {
   protected extractChatResponse(data: unknown): string {
     this.assertOk(data);
     const response = data as MistralResponse;
-    const content = response.choices?.[0]?.message?.content;
+    const content = normalizeMistralText(
+      response.choices?.[0]?.message?.content
+    );
+    assertResponseComplete(
+      this.id,
+      content,
+      response.choices?.[0]?.finish_reason,
+      ["stop"]
+    );
     if (!content) {
-      throw new Error("Mistral returned an empty response");
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Mistral returned an empty response"
+      );
     }
     return content;
+  }
+
+  protected extractStreamText(content: unknown): string {
+    return normalizeMistralText(content);
   }
 }

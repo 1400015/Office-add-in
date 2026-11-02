@@ -27,7 +27,8 @@
       "document": "document",
       "range": "plage sélectionnée",
       "slide": "diapositive actuelle"
-    }
+    },
+    "incomplete": "Réponse incomplète. Vérifiez le contenu avant de l’utiliser ou générez une nouvelle réponse."
   },
   "selectors": {
     "provider": "Fournisseur",
@@ -35,7 +36,9 @@
     "reasoning": "Raisonnement",
     "refreshModels": "Actualiser les modèles",
     "modelsFallback": "La liste contient des suggestions ou des résultats enregistrés car le fournisseur est inaccessible.",
-    "noModels": "Aucun modèle n’est disponible pour ce fournisseur."
+    "noModels": "Aucun modèle n’est disponible pour ce fournisseur.",
+    "modelCompatibilityUnknown": "Compatibilité avec la conversation non confirmée",
+    "chooseCompatibleModel": "Sélectionnez un modèle. La compatibilité des modèles restants avec la conversation n’a pas pu être confirmée."
   },
   "settings": {
     "providers": "Fournisseurs",
@@ -185,7 +188,15 @@
     "emptyResponse": "Le fournisseur a renvoyé une réponse vide. Réessayez.",
     "locked": "Déverrouillez la phrase secrète avant d’utiliser l’assistant.",
     "contextTruncated": "Seule une partie du contenu sélectionné a été envoyée car la limite de contexte est dépassée.",
-    "notReady": "Les paramètres sont en cours de chargement. Veuillez patienter."
+    "notReady": "Les paramètres sont en cours de chargement. Veuillez patienter.",
+    "incompleteResponse": "La réponse ne s’est pas terminée. Le contenu reçu est dans la conversation et n’a pas été appliqué automatiquement au document.",
+    "incompleteSaveFailed": "La réponse est incomplète. Elle est visible dans la conversation, mais n’a pas pu être enregistrée dans l’historique.",
+    "historyDeleteFailed": "La conversation n’a pas pu être supprimée. Réessayez.",
+    "historyClearFailed": "L’historique n’a pas pu être effacé. Réessayez.",
+    "modelsLoading": "La liste des modèles est en cours de mise à jour. Patientez avant de lancer une demande.",
+    "modelCatalogFailed": "Impossible de charger les modèles. Actualisez la liste dans l’onglet Chat et réessayez.",
+    "presentationPartial": "La présentation a peut-être été créée en partie seulement. Le plan complet est dans le chat ; vérifiez les diapositives avant de réessayer.",
+    "presentationPartialSaveFailed": "La présentation a peut-être été créée en partie seulement. Le plan complet est dans le chat, mais n’a pas pu être enregistré dans l’historique. Vérifiez les diapositives avant de réessayer."
   },
   "common": {
     "loading": "Chargement...",

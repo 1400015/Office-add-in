@@ -15,8 +15,11 @@ export type FriendlyErrorKind =
   | "errors.editConflict"
   | "errors.selectionTooLong"
   | "errors.emptyResponse"
+  | "errors.incompleteResponse"
   | "errors.locked"
   | "errors.notReady"
+  | "errors.modelsLoading"
+  | "errors.modelCatalogFailed"
   | "errors.generic";
 
 const PROXY_ERROR_KEYS: Record<ProxyFailureKind, FriendlyErrorKind> = {
@@ -45,6 +48,8 @@ const HOST_ERRORS: Record<string, string> = {
   "action-conflict": "errors.editConflict",
   locked: "errors.locked",
   notReady: "errors.notReady",
+  modelsLoading: "errors.modelsLoading",
+  modelCatalogFailed: "errors.modelCatalogFailed",
 };
 
 export function friendlyError(
@@ -79,6 +84,7 @@ export function friendlyError(
   if (status === 401 || status === 403) return "errors.auth";
   if (status === 429) return "errors.rateLimited";
   if (code === "EMPTY_RESPONSE") return "errors.emptyResponse";
+  if (code === "INCOMPLETE_RESPONSE") return "errors.incompleteResponse";
 
   const provider = context?.provider;
   const isOllama = provider === "ollama" || isOllamaEndpoint(message);

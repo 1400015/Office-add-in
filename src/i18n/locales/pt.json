@@ -27,7 +27,8 @@
       "document": "documento",
       "range": "intervalo selecionado",
       "slide": "diapositivo atual"
-    }
+    },
+    "incomplete": "Resposta incompleta. Confirma o conteúdo antes de o utilizar ou gera novamente."
   },
   "selectors": {
     "provider": "Fornecedor",
@@ -35,7 +36,9 @@
     "reasoning": "Raciocínio",
     "refreshModels": "Atualizar modelos",
     "modelsFallback": "A lista contém sugestões ou resultados guardados porque não foi possível contactar o fornecedor.",
-    "noModels": "Não há modelos disponíveis para este fornecedor."
+    "noModels": "Não há modelos disponíveis para este fornecedor.",
+    "modelCompatibilityUnknown": "Compatibilidade com chat por confirmar",
+    "chooseCompatibleModel": "Seleciona um modelo. A compatibilidade com chat dos modelos restantes não foi confirmada."
   },
   "settings": {
     "providers": "Fornecedores",
@@ -185,7 +188,15 @@
     "emptyResponse": "O fornecedor devolveu uma resposta vazia. Tenta novamente.",
     "locked": "Desbloqueia a frase-passe antes de usar o assistente.",
     "contextTruncated": "Só foi enviada parte do conteúdo selecionado porque excede o limite de contexto.",
-    "notReady": "As definições ainda estão a carregar. Aguarda um momento."
+    "notReady": "As definições ainda estão a carregar. Aguarda um momento.",
+    "incompleteResponse": "A resposta não foi concluída. O conteúdo recebido está no chat e não foi aplicado automaticamente ao documento.",
+    "incompleteSaveFailed": "A resposta ficou incompleta. Está visível no chat, mas não foi possível guardá-la no histórico.",
+    "historyDeleteFailed": "Não foi possível eliminar a conversa. Tenta novamente.",
+    "historyClearFailed": "Não foi possível limpar o histórico. Tenta novamente.",
+    "modelsLoading": "A lista de modelos está a atualizar. Aguarda antes de iniciar um pedido.",
+    "modelCatalogFailed": "Não foi possível carregar os modelos. Atualiza a lista no separador Chat e tenta novamente.",
+    "presentationPartial": "A criação pode ter sido parcial. O plano completo está no chat; verifica os diapositivos antes de repetir.",
+    "presentationPartialSaveFailed": "A criação pode ter sido parcial. O plano completo está no chat, mas não foi guardado no histórico. Verifica os diapositivos antes de repetir."
   },
   "common": {
     "loading": "A carregar...",
