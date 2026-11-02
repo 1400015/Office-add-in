@@ -4,7 +4,7 @@
 
 ## 1. Objetivo e ponto de partida
 
-Este plano foi executado no repositório `/workspace/Office-add-in` para corrigir os problemas identificados na análise de 30/10/2026. Uma revisão posterior acrescentou correções que aguardam testes, conforme solicitado pelo utilizador. O histórico de validação e as verificações pendentes estão em [VALIDATION_REPORT.md](VALIDATION_REPORT.md). As combinações com Office e fornecedores reais continuam pendentes.
+Este plano foi executado no repositório `/workspace/Office-add-in` para corrigir os problemas identificados na análise de 30/10/2026. Uma revisão posterior acrescentou correções que aguardam testes, conforme solicitado pelo utilizador. O histórico de validação e as verificações pendentes estão em [VALIDATION_REPORT.md](../VALIDATION_REPORT.md). As combinações com Office e fornecedores reais continuam pendentes.
 
 Baseline analisada: branch `main`, commit `5b16013d7d10a74ebbeb803db83f03afe03862fe`. Nessa revisão passaram 193 testes em 23 ficheiros, TypeScript/build, lint e formatação. A auditoria das dependências de produção não reportou vulnerabilidades. O serviço oficial Microsoft aceitou o manifesto sem erros ou avisos. A CLI de validação devolveu código zero numa falha de rede: esse comportamento também precisa de correção.
 
