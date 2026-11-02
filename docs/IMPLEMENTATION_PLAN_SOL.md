@@ -8,7 +8,7 @@ Implementar integralmente as seis correções identificadas na revisão posterio
 
 Repositório: `/workspace/Office-add-in` (`1400015/Office-add-in`). No momento da elaboração, a branch é `main` e o último commit é `af5a14e3e0b6d06c2bfdfe4509a20cc3810f6f8e`. **A base efetiva inclui alterações locais ainda sem commit e ficheiros novos ainda não rastreados.** As correções R1–R7 estão nesse trabalho local; começar apenas pelo commit remoto perderia parte da base necessária.
 
-O histórico E1–E9 continua em [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Os resultados anteriores continuam em [VALIDATION_REPORT.md](VALIDATION_REPORT.md). Não voltar a executar esses planos desde o início nem apresentar resultados históricos como validação destas seis correções.
+O histórico E1–E9 continua em [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Os resultados anteriores continuam em [VALIDATION_REPORT.md](../VALIDATION_REPORT.md). Não voltar a executar esses planos desde o início nem apresentar resultados históricos como validação destas seis correções.
 
 ### Instruções de execução
 
