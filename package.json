@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "icons": "node scripts/generate-icons.mjs",
-    "sideload": "office-addin-debugging start manifest.xml desktop"
+    "sideload": "office-addin-debugging start manifest.xml desktop",
+    "check:manifest-paths": "node scripts/check-manifest-paths.mjs"
   },
   "dependencies": {
     "@fluentui/react-components": "^9.75.0",

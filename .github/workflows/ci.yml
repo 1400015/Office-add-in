@@ -29,6 +29,9 @@ jobs:
 
       - run: npm run build
 
+      # Every local path referenced by manifest.xml must exist in dist/.
+      - run: npm run check:manifest-paths
+
       - run: npm run validate
       - run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('manifest.xml'); print('manifest.xml OK')"
       - run: npx office-addin-manifest info manifest.xml
