@@ -275,7 +275,7 @@ Registar comando, resultado, momento e limitações. Uma falha preexistente deve
 
 ### 7.3 Testes automatizados adiados pelo utilizador
 
-Não acrescentar, adaptar ou executar testes nesta execução. Ao receber autorização para retomar testes, implementar os cenários de cada C com promises controladas e mocks que respeitem as APIs reais. Mapa inicial para essa fase:
+Os testes não foram acrescentados, adaptados nem executados localmente nesta execução, conforme a indicação do utilizador. O CI de GitHub executou-os automaticamente após o push solicitado e falhou porque os mocks/fixtures não seguem ainda os contratos atualizados descritos abaixo; esse resultado não é aprovação dos cenários funcionais C1–C6. Ao retomar a validação, adaptar os testes com promises controladas e mocks que respeitem as APIs reais. Mapa inicial para essa fase:
 
 | Correção | Ficheiros de teste existentes a rever posteriormente | Cobertura principal |
 | --- | --- | --- |
@@ -326,7 +326,7 @@ Para cada etapa, acrescentar aqui uma nota breve com ficheiros alterados, decis�
 - **C6:** a inserção usa um só `PowerPoint.run`, captura IDs/intervalo antes do primeiro await, verifica PowerPointApi 1.5 e resolve o intervalo por slide/shape/posição/conteúdo. Ausência de intervalo usa o ID inicial; apresentação vazia usa C1. Falhas de escrita não desencadeiam uma segunda inserção.
 - **C3:** novo `providers/mistralText.ts` normaliza strings/blocos e ignora conteúdo não textual tipado. `MistralProvider` usa o normalizador antes da conclusão; `BaseProvider` expõe a extração de deltas sem duplicar o transporte SSE.
 - **C4:** o store contém estado/revisões do catálogo, preferências em memória e a consulta com IDs/cancelamento/guardas. `hooks/useModelCatalog.ts` fica sempre montado no Taskpane e aplica debounce só à edição da configuração. Seletores consomem o estado partilhado; todos os inícios de geração passam por `isModelReady`/`configured`. `ModelService` guarda a preferência com predicado de validade; a hidratação deixa essa leitura para a barreira de `modelWrites`, evitando snapshots antigos. O fornecedor usa a mesma fila das definições. Não há gravação automática completa por consulta de catálogo.
-- **Integração:** avisos de possível criação parcial e indisponibilidade de modelos traduzidos nos cinco idiomas; erros apresentados numa área única em todos os separadores; README/INSTALL atualizados. A inserção de respostas existentes continua independente do catálogo. Nenhum teste foi acrescentado, alterado ou executado. Resultados e limites em `VALIDATION_REPORT.md`.
+- **Integração:** avisos de possível criação parcial e indisponibilidade de modelos traduzidos nos cinco idiomas; erros apresentados numa área única em todos os separadores; README/INSTALL atualizados. A inserção de respostas existentes continua independente do catálogo. Nenhum teste foi acrescentado/alterado ou executado localmente pelo executor. Após o push solicitado, o CI automático do PR executou `npm test` e falhou nos mocks/fixtures anteriores; detalhes em `VALIDATION_REPORT.md`.
 
 ### Atualização documental no fim da implementação
 

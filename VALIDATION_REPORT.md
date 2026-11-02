@@ -1,6 +1,6 @@
 # Registo de validação
 
-**Estado mais recente:** C1–C6 implementadas em 2 de novembro de 2026; consultar a secção final. As verificações estáticas passaram. Os testes continuam adiados pelo utilizador e os ensaios Office/fornecedores reais permanecem pendentes.
+**Estado mais recente:** C1–C6 implementadas em 2 de novembro de 2026; consultar a secção final. As verificações estáticas locais passaram. Os testes locais continuam adiados pelo utilizador; o CI do PR, iniciado automaticamente pelo push solicitado, executou `npm test` e falhou em testes com mocks/fixtures desatualizados. Os ensaios Office/fornecedores reais permanecem pendentes.
 
 Data: 31 de outubro de 2026. Base: `5b16013d7d10a74ebbeb803db83f03afe03862fe`. As alterações estão no workspace local.
 
@@ -154,7 +154,8 @@ Mensagens novas nos cinco idiomas para atualização/falha do catálogo e criaç
 
 ### Testes adiados e verificações não executadas
 
-- **Testes automatizados: não acrescentados, alterados nem executados, por indicação do utilizador.** Os cenários C1–C6 e o mapa de ficheiros para a fase futura continuam no plano. A contagem histórica de testes deste relatório não se aplica a estas alterações.
+- **Testes locais: não acrescentados, alterados nem executados, por indicação do utilizador.** O CI de GitHub executado automaticamente pelo push do PR #5 correu `npm test` e **falhou**. O conjunto atual usa mocks ainda incompatíveis com os contratos revistos: `powerpointActions.test.ts` falha porque os shapes simulados não têm `load()`; `officeService.test.ts` também não fornece objetos carregáveis para a seleção PowerPoint; `operationConcurrency.test.tsx` não prepara a prontidão do catálogo partilhado; `chatStream.test.ts` não fornece o `finishReason` obrigatório no stream Gemini. Estas falhas não foram corrigidas nesta entrega, conforme a suspensão dos testes. Também não indicam sucesso dos comportamentos funcionais; adaptar esses fixtures e executar os cenários continua pendente para a fase de testes indicada pelo utilizador. A contagem histórica de testes deste relatório não se aplica a estas alterações.
+- **CI automático do PR #5:** `npm ci`, `npm run typecheck`, `npm run lint` e `npm run format:check` passaram; `npm test` falhou e, por a workflow parar no primeiro comando falhado, build, validate, validação XML/manifesto e bundle do proxy foram ignorados. Execução: run `41428924576`, commit `9e2678f04473c9db83e6d52018f2d30386069cd4`. O relatório do PR confirma que não houve alteração de código depois desta execução.
 - **Office Desktop/Web e OfficeRuntime real: pendentes por falta de sessão/ambiente Office de teste.** Incluem seleção de texto/API 1.5, criação, coautoria, mudança de seleção, eliminação do destino, frase-passe e persistência no runtime real. Não foram abertos ou alterados documentos reais.
 - **Fornecedores reais: pendentes por falta de credenciais/endpoints de teste.** Incluem conteúdo Mistral em blocos/streaming e catálogos de contas/endpoints diferentes, incluindo Ollama. Não foram efetuadas chamadas reais de geração.
 - **Build, bundle Worker, manifesto remoto e auditoria de dependências: não executados nesta revisão.** Não houve alterações ao manifesto, proxy ou dependências. Aprovações históricas desses passos não são uma execução atual.
