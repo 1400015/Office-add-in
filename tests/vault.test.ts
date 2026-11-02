@@ -24,7 +24,7 @@ import {
 import { useAppStore } from "../src/store/useAppStore";
 import { STORAGE_KEYS } from "../src/constants";
 
-const SEALED = "enc:v2:AAAAAAAAAAAAAAAA:BBBBBBBBBBBBBBBB";
+const SEALED = "enc:v3:AAAAAAAAAAAAAAAA:BBBBBBBBBBBBBBBB";
 
 function createMockStorage(seed: Record<string, string> = {}) {
   const map = new Map<string, string>(Object.entries(seed));
