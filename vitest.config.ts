@@ -7,7 +7,15 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     coverage: {
-      reporter: ["text"],
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      reportsDirectory: "./coverage",
+      thresholds: {
+        statements: 60,
+        branches: 50,
+        functions: 55,
+        lines: 60,
+      },
     },
   },
 });

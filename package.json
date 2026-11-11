@@ -17,6 +17,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "icons": "node scripts/generate-icons.mjs",
     "sideload": "office-addin-debugging start manifest.xml desktop"
@@ -45,6 +46,7 @@
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react": "^7.37.2",
