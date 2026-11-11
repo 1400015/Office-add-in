@@ -24,7 +24,7 @@ Este guia explica, passo a passo, como instalar o add-in **AI Assistant** no Mic
 
 | Componente | Requisito |
 |---|---|
-| **Node.js** | versão >= 18 ([nodejs.org](https://nodejs.org)) |
+| **Node.js** | versão >= 20.19 ([nodejs.org](https://nodejs.org)) |
 | **Microsoft 365** | qualquer versão com suporte a add-ins (Word, Excel ou PowerPoint) |
 | **Sistema operativo** | Windows 10/11, macOS 10.15+, ou browser moderno (para Web) |
 | **Ligação à internet** | necessária para usar os fornecedores de IA online |
