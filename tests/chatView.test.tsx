@@ -1,31 +1,17 @@
 // @vitest-environment happy-dom
-import {
-  beforeAll,
-  beforeEach,
-  afterEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "../src/i18n";
 import { ChatView } from "../src/taskpane/ChatView";
 import { useAppStore } from "../src/store/useAppStore";
 import type { ChatMessage } from "../src/types";
 
-const sendMessage = vi.fn();
+const submitMessage = vi.fn(() => Promise.resolve());
 const stopStreaming = vi.fn();
 
 vi.mock("../src/hooks/useChat", () => ({
   useChat: () => ({
-    sendMessage,
+    submitMessage,
     stopStreaming,
     insertLastAnswer: vi.fn(),
     regenerateLast: vi.fn(),
@@ -57,13 +43,20 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  sendMessage.mockClear();
+  submitMessage.mockClear();
+  submitMessage.mockReturnValue(Promise.resolve());
   stopStreaming.mockClear();
+  const currentCatalog = useAppStore.getState().modelCatalog;
   useAppStore.setState({
     messages: [],
     isStreaming: false,
     streamingContent: "",
-    error: null,
+    pendingAction: null,
+    secretsLocked: false,
+    hydrated: true,
+    vaultBusy: false,
+    activeModel: "mistral-large-latest",
+    modelCatalog: { ...currentCatalog, status: "ready", provider: "mistral" },
     setError: vi.fn(),
   });
 });
@@ -116,19 +109,6 @@ describe("ChatView", () => {
     expect(screen.getByText("partial answer")).toBeTruthy();
   });
 
-  it("renders the error bar and dismisses it", () => {
-    const setError = vi.fn();
-    useAppStore.setState({ error: "noApiKey", setError });
-
-    render(<ChatView />);
-
-    expect(screen.getByText(/API key/i)).toBeTruthy();
-    // The dismiss button is the first button rendered (error bar precedes
-    // the input area); the Send button is the second.
-    fireEvent.click(screen.getAllByRole("button")[0]!);
-    expect(setError).toHaveBeenCalledWith(null);
-  });
-
   it("sends a trimmed message and clears the input", async () => {
     render(<ChatView />);
 
@@ -138,7 +118,7 @@ describe("ChatView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith("hi");
+      expect(submitMessage).toHaveBeenCalledWith("hi");
     });
   });
 
