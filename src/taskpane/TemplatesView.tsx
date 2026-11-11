@@ -20,10 +20,19 @@ import { useChat } from "../hooks/useChat";
 
 export function TemplatesView(): JSX.Element {
   const { t, i18n } = useTranslation();
-  const setSystemPrompt = useAppStore((s) => s.setSystemPrompt);
-  const persist = useAppStore((s) => s.persist);
   const setView = useAppStore((s) => s.setView);
-  const { sendMessage } = useChat();
+  const catalogStatus = useAppStore((s) => s.modelCatalog.status);
+  const activeModel = useAppStore((s) => s.activeModel);
+  const modelsReady = catalogStatus === "ready" && Boolean(activeModel);
+  const busy = useAppStore(
+    (s) =>
+      s.isStreaming ||
+      s.pendingAction !== null ||
+      s.secretsLocked ||
+      s.vaultBusy ||
+      !s.hydrated
+  );
+  const { submitMessage } = useChat();
   const [used, setUsed] = useState<string | null>(null);
 
   const onUse = async (
@@ -31,17 +40,25 @@ export function TemplatesView(): JSX.Element {
     prompt: string,
     system?: string
   ): Promise<void> => {
-    if (system) {
-      setSystemPrompt(system);
-      await persist();
-    }
-    setUsed(templateId);
+    if (busy || !modelsReady) return;
+    const request = submitMessage(prompt, system);
+    if (!request) return;
     setView("chat");
-    await sendMessage(prompt);
+    setUsed(templateId);
+    await request;
   };
 
   return (
     <div className="templates-grid">
+      {!busy && !modelsReady && (
+        <div className="warning-banner">
+          {t(
+            catalogStatus === "idle" || catalogStatus === "loading"
+              ? "common.loading"
+              : "errors.noModel"
+          )}
+        </div>
+      )}
       <Accordion
         collapsible
         multiple
@@ -76,6 +93,7 @@ export function TemplatesView(): JSX.Element {
                       <Button
                         size="small"
                         appearance="primary"
+                        disabled={busy || !modelsReady}
                         onClick={() => void onUse(tpl.id, prompt, system)}
                       >
                         {used === tpl.id

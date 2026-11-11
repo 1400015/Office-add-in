@@ -87,7 +87,9 @@ export function corsHeaders(
   return {
     "Access-Control-Allow-Origin": origin ?? "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "*",
+    // Authorization is a CORS non-wildcard header and must be explicit.
+    "Access-Control-Allow-Headers":
+      "Authorization, Content-Type, X-OUAI-Upstream, X-Api-Key, Anthropic-Version, X-Goog-Api-Key, HTTP-Referer, X-Title, *",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

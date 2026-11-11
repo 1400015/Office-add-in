@@ -4,6 +4,7 @@ async function loadOfficeService() {
   return {
     getHost: mod.getHost,
     getPlatform: mod.getPlatform,
+    getContext: mod.getContext,
     isOfficeReady: mod.isOfficeReady,
     isOllamaCompatible: mod.isOllamaCompatible,
     insertTextAtSelection: mod.insertTextAtSelection,
@@ -148,6 +149,69 @@ describe("isOllamaCompatible", () => {
   });
 });
 
+describe("PowerPoint context", () => {
+  function makeShape(text: string) {
+    return {
+      id: "shape-1",
+      type: "TextBox",
+      textFrame: { textRange: { text } },
+      load: () => {},
+    };
+  }
+  function installSlide(
+    sync: () => Promise<void> = async () => {},
+    shapeText = "x".repeat(60001)
+  ): void {
+    const slide = {
+      id: "slide-1",
+      load: () => {},
+      shapes: {
+        items: [makeShape(shapeText)],
+        load: () => {},
+      },
+    };
+    vi.stubGlobal("PowerPoint", {
+      run: async (cb: (ctx: unknown) => Promise<unknown>) =>
+        cb({
+          presentation: {
+            getSelectedSlides: () => ({
+              load: () => {},
+              items: [slide],
+            }),
+          },
+          sync,
+        }),
+    });
+  }
+
+  it("reports truncation when the slide exceeds the context budget", async () => {
+    installOffice("PowerPoint", "PC");
+    installSlide();
+    const reportTruncation = vi.fn();
+    const context = await svc.getContext({
+      signal: new AbortController().signal,
+      assertCurrent: () => {},
+      reportTruncation,
+    });
+    expect(reportTruncation).toHaveBeenCalledOnce();
+    expect(context.selectionText).toContain("truncated 1 chars");
+  });
+
+  it("propagates cancellation while loading slide text", async () => {
+    installOffice("PowerPoint", "PC");
+    const controller = new AbortController();
+    installSlide(async () => {
+      controller.abort();
+    });
+    const assertCurrent = () => {
+      if (controller.signal.aborted) throw new Error("cancelled");
+    };
+    await expect(
+      svc.getContext({ signal: controller.signal, assertCurrent })
+    ).rejects.toThrow("cancelled");
+  });
+});
+
 describe("insertTextAtSelection", () => {
   it("throws when the host cannot insert", async () => {
     installOffice("Unknown", "PC");
@@ -158,23 +222,50 @@ describe("insertTextAtSelection", () => {
 
   it("inserts text onto the active PowerPoint slide", async () => {
     installOffice("PowerPoint", "PC");
+    // Office.context.requirements must report PowerPointApi 1.5 support so
+    // selectedTextRange() does not return null and take the text-box path.
+    office!.context = {
+      ...office!.context,
+      requirements: { isSetSupported: () => true },
+    } as unknown as MockOffice["context"];
     const boxes: string[] = [];
+    const slide = {
+      id: "slide-1",
+      load: () => {},
+      shapes: {
+        items: [] as unknown[],
+        load: () => {},
+        getItem: () => {
+          throw new Error("no shapes");
+        },
+        addTextBox: (text: string) => {
+          boxes.push(text);
+          return { name: "", load: () => {}, textFrame: { textRange: { text } } };
+        },
+      },
+    };
     vi.stubGlobal("PowerPoint", {
       run: async (cb: (ctx: unknown) => Promise<unknown>) => {
         const ctx = {
           presentation: {
+            slides: {
+              items: [slide],
+              load: () => {},
+              getItem: () => slide,
+              getCount: () => ({ value: 1 }),
+            },
             getSelectedSlides: () => ({
               load: () => {},
-              items: [
-                {
-                  shapes: {
-                    addTextBox: (text: string) => {
-                      boxes.push(text);
-                      return { name: "", textFrame: { textRange: { text } } };
-                    },
-                  },
-                },
-              ],
+              items: [slide],
+            }),
+            // Return a null-object range so insertTextOnSlide falls back to
+            // adding a text box on the selected slide.
+            getSelectedTextRangeOrNullObject: () => ({
+              isNullObject: true,
+              text: "",
+              start: 0,
+              length: 0,
+              load: () => {},
             }),
           },
           sync: async () => {},

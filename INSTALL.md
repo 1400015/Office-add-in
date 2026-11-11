@@ -306,7 +306,7 @@ Depois de carregar o add-in, verifica se está tudo a funcionar:
 | 2 | Clicar em **Open Chat** abre o painel lateral | ✅ Taskpane carrega sem erros |
 | 3 | O seletor de fornecedor mostra os 6 proveedores | ✅ Mistral, OpenAI, Claude, Gemini, OpenRouter, Ollama |
 | 4 | Ir a **Settings** e guardar uma API key | ✅ "Settings saved" aparece |
-| 5 | Clicar em **Test connection** | ✅ "OK (N models)" ou mensagem de erro clara |
+| 5 | Clicar em **Test connection** | ✅ Confirmação de acesso ao endpoint ou mensagem de erro clara |
 | 6 | Enviar uma mensagem no chat | ✅ Resposta da IA aparece (com streaming) |
 | 7 | Usar uma ação rápida (ex: **Summarize** no Word) | ✅ Resultado aparece no chat |
 
@@ -342,7 +342,9 @@ Para cada fornecedor, preenche:
 
 ### Passo 3 — Testar a ligação
 
-Clica em **Test connection** para verificar se o fornecedor responde.
+Clica em **Test connection** para verificar o acesso ao endpoint e, quando aplicável, a autenticação. O teste não gera texto nem confirma saldo ou acesso a todos os modelos. As sugestões de modelos disponíveis quando a listagem falha não confirmam a ligação. No Ollama, uma lista vazia significa que não há modelos instalados.
+
+No Word, as ações que substituem texto recusam seleções com mais de 60 000 caracteres. Se o conteúdo de destino mudar no Word, Excel ou PowerPoint enquanto a IA responde, o resultado é apresentado no chat sem substituir o conteúdo alterado.
 
 ### Passo 4 — Configurações gerais
 
@@ -373,7 +375,7 @@ A API da OpenAI e da Anthropic não envia CORS. O suplemento já sabe falar com 
 npx wrangler deploy --var ALLOWED_ORIGINS:"https://meu-servidor.com"
 ```
 
-O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho `Authorization`, não no URL.
+O código está em [`proxy/worker.ts`](proxy/worker.ts). Aceita só destinos da lista (`api.openai.com`, `api.anthropic.com`, Azure OpenAI, Mistral, Gemini, OpenRouter). A chave vai no cabeçalho de autenticação do fornecedor, não no URL.
 
 `wrangler deploy` publica já com `ENVIRONMENT=production`. Sem `ALLOWED_ORIGINS` o worker responde HTTP 500 a todos os pedidos e também recusa pedidos sem header `Origin`. Substitui `https://meu-servidor.com` pela origem onde o suplemento está alojado. Para experimentar o worker em local:
 
@@ -388,6 +390,20 @@ Nas Definições, ativa **Usar proxy** e cola a origem do Worker (por exemplo `h
 #### Opção antiga — não uses a chave no URL
 
 Um worker que lê `?key=` expõe a chave em logs. Não uses esse padrão.
+
+### Respostas incompletas e modelos compatíveis
+
+Quando o fornecedor indica que uma resposta foi cortada ou bloqueada, o conteúdo recebido fica no chat com um aviso e não substitui automaticamente o texto do documento. O streaming exige o marcador de conclusão do fornecedor. Endpoints compatíveis antigos que omitam os metadados de conclusão nas respostas sem streaming não permitem confirmar esse estado.
+
+A lista de modelos exclui modelos reconhecidamente incompatíveis com chat. Os de compatibilidade por confirmar ficam identificados e exigem escolha explícita ou uma preferência guardada. O teste de ligação continua a verificar o endpoint e a autenticação; não certifica a compatibilidade de cada modelo.
+
+A disponibilidade do modelo é atualizada em todos os separadores. Ao alterar o endpoint, a chave ou o proxy do fornecedor ativo, aguarda a reconciliação da lista antes de enviar um pedido, usar um template ou executar um comando do friso. A preferência guardada conserva-se durante essa atualização e os erros aparecem no separador aberto. Pedidos já aceites conservam o endpoint e o modelo originais.
+
+A inserção manual e os templates respeitam a operação em curso, Parar, Nova conversa e o bloqueio do cofre. Se a ativação da frase-passe for interrompida, o desbloqueio seguinte termina a proteção das credenciais e do histórico antes de permitir operações de conteúdo.
+
+No PowerPoint, as ações de texto ignoram imagens e elementos sem texto editável. Não percorrem texto dentro de grupos, tabelas ou gráficos.
+
+Na criação de apresentações, cada diapositivo novo é identificado pelo seu ID e os placeholders herdados são conservados. Se a identificação for ambígua ou ocorrer uma falha depois de começar a criação, o plano completo fica no chat com aviso de possível criação parcial; verifica a apresentação antes de repetir. A inserção manual conserva o destino inicial mesmo que mudes a seleção e não repete automaticamente uma escrita falhada noutro diapositivo. A API Office não oferece garantia atómica de propriedade da criação perante quaisquer edições simultâneas de coautores; a validação em hosts reais continua pendente.
 
 ---
 
@@ -418,6 +434,8 @@ O add-in guarda dados no `OfficeRuntime.storage` e IndexedDB:
 1. Dentro do add-in: **History** → **Clear all**
 2. **Settings** → remover as API keys manualmente
 3. Para limpar tudo: fecha o Office e limpa os dados do WebView2/IE cache (Windows) ou do browser (Web)
+
+As conversas desaparecem da lista depois de o armazenamento confirmar a eliminação. Se houver uma falha, a lista é conservada e aparece uma mensagem para tentares novamente.
 
 ---
 
@@ -455,11 +473,11 @@ O add-in guarda dados no `OfficeRuntime.storage` e IndexedDB:
 
 1. Verifica se a key está correta (copia novamente do dashboard do fornecedor)
 2. Verifica se a key tem créditos/quota disponível
-3. Para OpenAI/Claude: verifica se o proxy está a injetar a key corretamente
+3. Para OpenAI/Claude: verifica se o proxy encaminha o cabeçalho de autenticação corretamente
 
 ### ❌ "Erro 429 (rate limit)"
 
-O add-in tenta automaticamente 3 vezes com backoff exponencial. Se persistir:
+Os pedidos JSON tentam automaticamente até 3 vezes com backoff exponencial. O streaming não é repetido automaticamente. Se o erro persistir:
 - Aguarda alguns minutos
 - Verifica os limites da tua conta no fornecedor
 - Muda para outro modelo/fornecedor

@@ -32,6 +32,10 @@ export function QuickActions(): JSX.Element {
   const { t, i18n } = useTranslation();
   const host = useAppStore((s) => s.host);
   const pendingAction = useAppStore((s) => s.pendingAction);
+  const isStreaming = useAppStore((s) => s.isStreaming);
+  const secretsLocked = useAppStore((s) => s.secretsLocked);
+  const hydrated = useAppStore((s) => s.hydrated);
+  const vaultBusy = useAppStore((s) => s.vaultBusy);
   const { runQuickAction } = useChat();
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [topic, setTopic] = useState("");
@@ -44,7 +48,12 @@ export function QuickActions(): JSX.Element {
   );
 
   const actions = buildQuickActions(host, t);
-  const busy = pendingAction !== null;
+  const busy =
+    pendingAction !== null ||
+    isStreaming ||
+    secretsLocked ||
+    !hydrated ||
+    vaultBusy;
 
   const closeDialog = (): void => setDialog(null);
 
@@ -54,10 +63,11 @@ export function QuickActions(): JSX.Element {
     const language = contentLanguageName(i18n.language);
     closeDialog();
     void runQuickAction(
-      (p) =>
+      (p, action) =>
         powerpointActions.createPresentation(
           { topic, slideCount: count, language },
-          p
+          p,
+          action
         ),
       label
     );
@@ -72,13 +82,13 @@ export function QuickActions(): JSX.Element {
     closeDialog();
     if (host === "word") {
       void runQuickAction(
-        (p) => wordActions.translateSelection(language, p),
+        (p, action) => wordActions.translateSelection(language, p, action),
         label
       );
       return;
     }
     void runQuickAction(
-      (p) => powerpointActions.translateSlide(language, p),
+      (p, action) => powerpointActions.translateSlide(language, p, action),
       label
     );
   };
@@ -106,7 +116,7 @@ export function QuickActions(): JSX.Element {
           <Button
             size="small"
             appearance="outline"
-            disabled={pendingAction !== null}
+            disabled={busy}
             onClick={() => setDialog("create")}
           >
             {t("quickActions.powerpoint.createPresentation")}
@@ -120,7 +130,7 @@ export function QuickActions(): JSX.Element {
               key={action.key}
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => void runQuickAction(action.run, action.label)}
             >
               {actionBusy ? <Spinner size="tiny" /> : action.label}
@@ -132,7 +142,7 @@ export function QuickActions(): JSX.Element {
             <Button
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => setDialog("translate")}
             >
               {t("quickActions.word.translate")}
@@ -140,7 +150,7 @@ export function QuickActions(): JSX.Element {
             <Button
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => openInstruction("word-generate")}
             >
               {t("quickActions.word.generate")}
@@ -152,7 +162,7 @@ export function QuickActions(): JSX.Element {
             <Button
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => openInstruction("excel-formula")}
             >
               {t("quickActions.excel.generateFormula")}
@@ -160,7 +170,7 @@ export function QuickActions(): JSX.Element {
             <Button
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => openInstruction("excel-vba")}
             >
               {t("quickActions.excel.generateVba")}
@@ -168,7 +178,7 @@ export function QuickActions(): JSX.Element {
             <Button
               size="small"
               appearance="outline"
-              disabled={pendingAction !== null}
+              disabled={busy}
               onClick={() => openInstruction("excel-script")}
             >
               {t("quickActions.excel.generateScript")}
@@ -179,7 +189,7 @@ export function QuickActions(): JSX.Element {
           <Button
             size="small"
             appearance="outline"
-            disabled={pendingAction !== null}
+            disabled={busy}
             onClick={() => setDialog("translate")}
           >
             {t("quickActions.powerpoint.translate")}

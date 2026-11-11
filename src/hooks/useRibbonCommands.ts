@@ -8,6 +8,7 @@ import {
 import * as wordActions from "../word/wordActions";
 import * as excelActions from "../excel/excelActions";
 import * as powerpointActions from "../powerpoint/powerpointActions";
+import type { ActionContext } from "../services/ActionContext";
 import type { OfficeHost } from "../types";
 
 type PromptFn = (text: string) => Promise<string>;
@@ -16,27 +17,32 @@ function actionFor(
   command: string,
   host: OfficeHost,
   language: string
-): ((prompt: PromptFn) => Promise<string>) | null {
+): ((prompt: PromptFn, action: ActionContext) => Promise<string>) | null {
   if (command === "Summarize") {
-    if (host === "word") return (p) => wordActions.summarizeDocument(p);
-    if (host === "excel") return (p) => excelActions.analyseTable(p);
+    if (host === "word")
+      return (p, action) => wordActions.summarizeDocument(p, action);
+    if (host === "excel")
+      return (p, action) => excelActions.analyseTable(p, action);
     if (host === "powerpoint") {
-      return (p) => powerpointActions.summarizePresentation(p);
+      return (p, action) => powerpointActions.summarizePresentation(p, action);
     }
   }
   if (command === "Translate") {
     if (host === "word") {
-      return (p) => wordActions.translateSelection(language, p);
+      return (p, action) => wordActions.translateSelection(language, p, action);
     }
     if (host === "excel")
-      return (p) => excelActions.translateRange(language, p);
+      return (p, action) => excelActions.translateRange(language, p, action);
     if (host === "powerpoint") {
-      return (p) => powerpointActions.translateSlide(language, p);
+      return (p, action) =>
+        powerpointActions.translateSlide(language, p, action);
     }
   }
   if (command === "Analyse") {
-    if (host === "word") return (p) => wordActions.explainSelection(p);
-    if (host === "excel") return (p) => excelActions.analyseTable(p);
+    if (host === "word")
+      return (p, action) => wordActions.explainSelection(p, action);
+    if (host === "excel")
+      return (p, action) => excelActions.analyseTable(p, action);
     if (host === "powerpoint") return (p) => powerpointActions.explainSlide(p);
   }
   return null;

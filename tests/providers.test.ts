@@ -246,14 +246,9 @@ describe("OllamaProvider", () => {
     ).toBeUndefined();
   });
 
-  it("falls back to default models when listing fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("connection refused"))
-    );
+  it("propagates model listing failures", async () => {
+    vi.stubGlobal("fetch", mockFetchOnce({}, 401));
     const provider = new OllamaProvider(createDefaultProviderConfig("ollama"));
-    const models = await provider.getModels();
-    expect(models.length).toBeGreaterThan(0);
-    expect(models[0]!.provider).toBe("ollama");
+    await expect(provider.getModels()).rejects.toBeInstanceOf(ProviderError);
   });
 });

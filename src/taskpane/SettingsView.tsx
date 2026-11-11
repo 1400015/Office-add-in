@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Accordion,
   AccordionItem,
@@ -15,6 +15,7 @@ import {
   MessageBar,
   MessageBarBody,
   Text,
+  Spinner,
 } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../store/useAppStore";
@@ -42,6 +43,8 @@ export function SettingsView(): JSX.Element {
   const theme = useAppStore((s) => s.theme);
   const language = useAppStore((s) => s.language);
   const secretsLocked = useAppStore((s) => s.secretsLocked);
+  const hydrated = useAppStore((s) => s.hydrated);
+  const vaultBusy = useAppStore((s) => s.vaultBusy);
   const passphraseEnabled = useAppStore((s) => s.passphraseEnabled);
   const createPassphrase = useAppStore((s) => s.createPassphrase);
   const unlockSecrets = useAppStore((s) => s.unlockSecrets);
@@ -57,6 +60,8 @@ export function SettingsView(): JSX.Element {
   const persist = useAppStore((s) => s.persist);
 
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const testController = useRef<AbortController | null>(null);
   const [testing, setTesting] = useState<ProviderId | null>(null);
   const [testResult, setTestResult] = useState<
     Record<string, { ok: boolean; message: string }>
@@ -64,24 +69,62 @@ export function SettingsView(): JSX.Element {
 
   const maxTokensLimit = effectiveMaxTokensLimit(activeModel, activeProvider);
 
+  useEffect(() => {
+    testController.current?.abort();
+    testController.current = null;
+    setTesting(null);
+    setTestResult({});
+    return () => {
+      testController.current?.abort();
+    };
+  }, [providerConfigs, secretsLocked, vaultBusy, hydrated]);
+
   const onSave = async (): Promise<void> => {
-    await persist();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError(false);
+    setSaved(false);
+    try {
+      await persist();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError(true);
+    }
   };
 
   const onTest = async (id: ProviderId): Promise<void> => {
+    testController.current?.abort();
+    const controller = new AbortController();
+    testController.current = controller;
+    const config = providerConfigs[id];
     setTesting(id);
-    setTestResult((prev) => ({ ...prev, [id]: { ok: true, message: "" } }));
+    setTestResult((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     try {
       const outcome = await runConnectionTest(
-        ModelService.listModels,
-        providerConfigs[id],
-        t
+        ModelService.probeConnection,
+        config,
+        t,
+        controller.signal
       );
-      setTestResult((prev) => ({ ...prev, [id]: outcome }));
+      const state = useAppStore.getState();
+      if (
+        !controller.signal.aborted &&
+        testController.current === controller &&
+        !state.secretsLocked &&
+        state.hydrated &&
+        !state.vaultBusy &&
+        state.providerConfigs[id] === config
+      ) {
+        setTestResult((prev) => ({ ...prev, [id]: outcome }));
+      }
     } finally {
-      setTesting(null);
+      if (testController.current === controller) {
+        testController.current = null;
+        setTesting(null);
+      }
     }
   };
 
@@ -108,6 +151,8 @@ export function SettingsView(): JSX.Element {
   };
 
   const ollamaBlocked = providerConfigs.ollama && !isOllamaCompatible();
+
+  if (!hydrated || vaultBusy) return <Spinner label={t("common.loading")} />;
 
   return (
     <div className="settings-section">
@@ -360,7 +405,7 @@ export function SettingsView(): JSX.Element {
                         <Button
                           size="small"
                           onClick={() => void onTest(id)}
-                          disabled={testing === id}
+                          disabled={testing !== null}
                         >
                           {testing === id
                             ? t("common.loading")
@@ -376,6 +421,11 @@ export function SettingsView(): JSX.Element {
         </AccordionItem>
       </Accordion>
 
+      {saveError && (
+        <MessageBar intent="error">
+          <MessageBarBody>{t("errors.generic")}</MessageBarBody>
+        </MessageBar>
+      )}
       <Button appearance="primary" onClick={() => void onSave()}>
         {saved ? t("settings.saved") : t("settings.save")}
       </Button>

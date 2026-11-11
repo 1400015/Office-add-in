@@ -6,10 +6,15 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
-import { httpRequest } from "../services/HttpService";
+import { assertResponseComplete } from "../services/responseCompletion";
+import { ProviderError } from "../types";
+import { normalizeMistralText } from "./mistralText";
 
 interface MistralResponse {
-  choices?: Array<{ message?: { content?: string } }>;
+  choices?: Array<{
+    message?: { content?: unknown };
+    finish_reason?: string | null;
+  }>;
   error?: { message?: string };
 }
 
@@ -62,35 +67,26 @@ export class MistralProvider extends BaseProvider {
   protected extractChatResponse(data: unknown): string {
     this.assertOk(data);
     const response = data as MistralResponse;
-    const content = response.choices?.[0]?.message?.content;
+    const content = normalizeMistralText(
+      response.choices?.[0]?.message?.content
+    );
+    assertResponseComplete(
+      this.id,
+      content,
+      response.choices?.[0]?.finish_reason,
+      ["stop"]
+    );
     if (!content) {
-      throw new Error("Mistral returned an empty response");
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Mistral returned an empty response"
+      );
     }
     return content;
   }
 
-  override async getModels() {
-    const data = await this.fetchModels();
-    return data;
-  }
-
-  private async fetchModels() {
-    try {
-      const data = await httpRequest<{ data?: Array<{ id: string }> }>({
-        url: this.buildUrl("/models"),
-        method: "GET",
-        headers: this.requestHeaders(),
-        timeout: this.config.timeout,
-        provider: this.id,
-      });
-      this.assertOk(data);
-      const models = data.data ?? [];
-      if (models.length > 0) {
-        return models.map((m) => ({ id: m.id, name: m.id, provider: this.id }));
-      }
-    } catch {
-      // fall back to defaults
-    }
-    return super.getModels();
+  protected extractStreamText(content: unknown): string {
+    return normalizeMistralText(content);
   }
 }

@@ -1,6 +1,12 @@
 import type { JSX } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { Button, Dropdown, Option, Tooltip } from "@fluentui/react-components";
+import { useMemo } from "react";
+import {
+  Button,
+  Dropdown,
+  Option,
+  Spinner,
+  Tooltip,
+} from "@fluentui/react-components";
 import { ArrowSync20Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../../store/useAppStore";
@@ -9,8 +15,7 @@ import {
   REASONING_LABELS,
   REASONING_LEVELS,
 } from "../../config/reasoningProfiles";
-import { ModelService } from "../../services/ModelService";
-import type { AIModel, ProviderId, ReasoningLevel } from "../../types";
+import type { ProviderId, ReasoningLevel } from "../../types";
 
 export function ProviderSelectors(): JSX.Element {
   const { t } = useTranslation();
@@ -18,35 +23,26 @@ export function ProviderSelectors(): JSX.Element {
   const activeModel = useAppStore((s) => s.activeModel);
   const reasoning = useAppStore((s) => s.reasoning);
   const providerConfigs = useAppStore((s) => s.providerConfigs);
+  const officeReady = useAppStore((s) => s.officeReady);
+  const hydrated = useAppStore((s) => s.hydrated);
+  const vaultBusy = useAppStore((s) => s.vaultBusy);
+  const secretsLocked = useAppStore((s) => s.secretsLocked);
   const setActiveProvider = useAppStore((s) => s.setActiveProvider);
   const setActiveModel = useAppStore((s) => s.setActiveModel);
   const setReasoning = useAppStore((s) => s.setReasoning);
   const persist = useAppStore((s) => s.persist);
-
-  const [models, setModels] = useState<AIModel[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
-
-  const config = providerConfigs[activeProvider];
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingModels(true);
-    ModelService.listModels(config)
-      .then(async (list) => {
-        if (cancelled) return;
-        setModels(list);
-        if (!list.some((m) => m.id === activeModel) && list.length > 0) {
-          setActiveModel(list[0]!.id);
-          await ModelService.setStoredActiveModel(activeProvider, list[0]!.id);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingModels(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeProvider]); // eslint-disable-line react-hooks/exhaustive-deps
+  const catalog = useAppStore((s) => s.modelCatalog);
+  const refreshModels = useAppStore((s) => s.refreshModels);
+  const available = officeReady && hydrated && !secretsLocked && !vaultBusy;
+  const currentCatalog = catalog.provider === activeProvider;
+  const ready = currentCatalog && catalog.status === "ready";
+  const models = currentCatalog ? catalog.models : [];
+  const loadingModels =
+    available &&
+    (!currentCatalog ||
+      catalog.status === "idle" ||
+      catalog.status === "loading");
+  const warning = currentCatalog ? catalog.warningKey : undefined;
 
   const providerOptions = useMemo(
     () =>
@@ -58,31 +54,14 @@ export function ProviderSelectors(): JSX.Element {
     [providerConfigs]
   );
 
-  const onProviderChange = async (id: string): Promise<void> => {
-    const providerId = id as ProviderId;
-    setActiveProvider(providerId);
-    const stored = await ModelService.getStoredActiveModel(providerId);
-    const list = await ModelService.listModels(
-      useAppStore.getState().providerConfigs[providerId]
+  const saveSettings = (): void => {
+    void persist().catch(() =>
+      useAppStore.getState().setError("errors.generic")
     );
-    setModels(list);
-    if (stored && list.some((m) => m.id === stored)) {
-      setActiveModel(stored);
-    } else if (list.length > 0) {
-      setActiveModel(list[0]!.id);
-      await ModelService.setStoredActiveModel(providerId, list[0]!.id);
-    }
-    void persist();
   };
-
-  const onRefresh = async (): Promise<void> => {
-    setLoadingModels(true);
-    try {
-      const list = await ModelService.listModels(config, true);
-      setModels(list);
-    } finally {
-      setLoadingModels(false);
-    }
+  const onProviderChange = (id: string): void => {
+    if (!PROVIDER_ORDER.includes(id as ProviderId)) return;
+    setActiveProvider(id as ProviderId);
   };
 
   return (
@@ -91,9 +70,8 @@ export function ProviderSelectors(): JSX.Element {
         size="small"
         value={PROVIDER_DEFINITIONS[activeProvider].name}
         selectedOptions={[activeProvider]}
-        onOptionSelect={(_, data) =>
-          void onProviderChange(String(data.optionValue))
-        }
+        disabled={secretsLocked || vaultBusy || !hydrated}
+        onOptionSelect={(_, data) => onProviderChange(String(data.optionValue))}
       >
         {providerOptions.map((p) => (
           <Option key={p.id} value={p.id} text={p.label}>
@@ -102,7 +80,6 @@ export function ProviderSelectors(): JSX.Element {
           </Option>
         ))}
       </Dropdown>
-
       <div style={{ display: "flex", gap: 4 }}>
         <Dropdown
           size="small"
@@ -110,18 +87,24 @@ export function ProviderSelectors(): JSX.Element {
           value={models.find((m) => m.id === activeModel)?.name ?? activeModel}
           selectedOptions={activeModel ? [activeModel] : []}
           onOptionSelect={(_, data) => {
-            setActiveModel(String(data.optionValue));
-            void ModelService.setStoredActiveModel(
-              activeProvider,
-              String(data.optionValue)
-            );
-            void persist();
+            const id = String(data.optionValue);
+            if (!models.some((model) => model.id === id)) return;
+            const current = useAppStore.getState();
+            if (
+              current.modelCatalog.generation !== catalog.generation ||
+              current.activeProvider !== activeProvider
+            )
+              return;
+            setActiveModel(id);
           }}
-          disabled={loadingModels}
+          disabled={!ready || !available}
         >
           {models.map((m) => (
             <Option key={m.id} value={m.id} text={m.name}>
               {m.name}
+              {m.chatCompatibility !== "supported"
+                ? ` — ${t("selectors.modelCompatibilityUnknown")}`
+                : ""}
             </Option>
           ))}
         </Dropdown>
@@ -130,20 +113,46 @@ export function ProviderSelectors(): JSX.Element {
             size="small"
             appearance="subtle"
             icon={<ArrowSync20Regular />}
-            onClick={() => void onRefresh()}
-            disabled={loadingModels}
+            onClick={refreshModels}
+            disabled={
+              loadingModels ||
+              secretsLocked ||
+              vaultBusy ||
+              !officeReady ||
+              !hydrated
+            }
           />
         </Tooltip>
       </div>
-
+      {loadingModels && <Spinner size="tiny" label={t("common.loading")} />}
+      {warning && <div className="warning-banner full-width">{t(warning)}</div>}
+      {ready &&
+        models.length > 0 &&
+        (!activeModel ||
+          models.find((model) => model.id === activeModel)
+            ?.chatCompatibility !== "supported") && (
+          <div className="warning-banner full-width">
+            {t(
+              activeModel
+                ? "selectors.modelCompatibilityUnknown"
+                : "selectors.chooseCompatibleModel"
+            )}
+          </div>
+        )}
+      {ready && available && models.length === 0 && (
+        <div className="warning-banner full-width">
+          {t("selectors.noModels")}
+        </div>
+      )}
       <Dropdown
         className="full-width"
         size="small"
+        disabled={vaultBusy || !hydrated}
         value={REASONING_LABELS[reasoning]}
         selectedOptions={[reasoning]}
         onOptionSelect={(_, data) => {
           setReasoning(data.optionValue as ReasoningLevel);
-          void persist();
+          saveSettings();
         }}
       >
         {REASONING_LEVELS.map((level) => (

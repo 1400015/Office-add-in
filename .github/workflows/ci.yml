@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.0
           cache: npm
 
       - run: npm ci
@@ -28,6 +28,9 @@ jobs:
       - run: npm run test:coverage
 
       - run: npm run build
+
+      # Every local path referenced by manifest.xml must exist in dist/.
+      - run: npm run check:manifest-paths
 
       - run: npm run validate
       - run: python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('manifest.xml'); print('manifest.xml OK')"

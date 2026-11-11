@@ -6,8 +6,14 @@ import type {
 } from "../types";
 import { BaseProvider, type NormalizedMessage } from "./BaseProvider";
 import { clampMaxTokens, modelParams } from "../config/modelParams";
-import { httpRequest, httpStream } from "../services/HttpService";
+import {
+  httpRequest,
+  httpStream,
+  parseStreamPayload,
+} from "../services/HttpService";
+import { ProviderError } from "../types";
 import { logger } from "../services/LoggerService";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 interface GeminiPart {
   text?: string;
@@ -18,7 +24,11 @@ interface GeminiContent {
 }
 
 interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+  candidates?: Array<{
+    content?: { parts?: GeminiPart[] };
+    finishReason?: string;
+  }>;
+  promptFeedback?: { blockReason?: string };
   error?: { message?: string };
 }
 
@@ -47,7 +57,10 @@ export class GeminiProvider extends BaseProvider {
   }
 
   protected buildHeaders(): Record<string, string> {
-    return { "Content-Type": "application/json" };
+    return {
+      "Content-Type": "application/json",
+      "x-goog-api-key": this.requireApiKey(),
+    };
   }
 
   protected geminiContents(messages: NormalizedMessage[]): GeminiContent[] {
@@ -85,14 +98,14 @@ export class GeminiProvider extends BaseProvider {
   protected chatUrl(model: string, stream: boolean): string {
     const base = this.buildUrl("");
     const path = `/models/${encodeURIComponent(model)}:${stream ? "streamGenerateContent" : "generateContent"}`;
-    const key = this.requireApiKey();
-    return `${base}${path}?key=${encodeURIComponent(key)}`;
+    return `${base}${path}`;
   }
 
   override async chat(
     messages: ChatMessage[],
     options: ChatOptions,
-    context?: import("../types").ChatContext
+    context?: import("../types").ChatContext,
+    signal?: AbortSignal
   ): Promise<string> {
     const normalized = this.normalizeMessages(messages, options);
     const withContext = context?.selectionText
@@ -107,6 +120,7 @@ export class GeminiProvider extends BaseProvider {
       body,
       timeout: this.config.timeout,
       provider: this.id,
+      signal,
     });
     return this.extractChatResponse(data);
   }
@@ -126,25 +140,43 @@ export class GeminiProvider extends BaseProvider {
     logger.info("provider", "gemini: streaming chat request", {
       model: options.model,
     });
+    let emitted = false;
     await httpStream({
-      url: `${this.chatUrl(options.model, true)}&alt=sse`,
+      url: `${this.chatUrl(options.model, true)}?alt=sse`,
       headers: this.requestHeaders(),
       body,
       timeout: this.config.timeout,
       provider: this.id,
       signal,
-      onToken: (chunk) => {
-        try {
-          const parsed = JSON.parse(chunk) as GeminiResponse;
-          const text = parsed.candidates?.[0]?.content?.parts
-            ?.map((p) => p.text ?? "")
-            .join("");
-          if (text) onToken(text);
-        } catch {
-          // Gemini SSE sends one JSON object per line, not per data: frame
+      format: "sse",
+      onPayload: (chunk) => {
+        const parsed = parseStreamPayload<GeminiResponse>(chunk, this.id);
+        const text = parsed.candidates?.[0]?.content?.parts
+          ?.map((p) => p.text ?? "")
+          .join("");
+        if (text) {
+          emitted = true;
+          onToken(text);
         }
+        if (parsed.promptFeedback?.blockReason)
+          assertResponseComplete(
+            this.id,
+            "",
+            parsed.promptFeedback.blockReason,
+            []
+          );
+        const reason = parsed.candidates?.[0]?.finishReason;
+        assertResponseComplete(this.id, "", reason, ["STOP"]);
+        if (reason === "STOP") return "stop";
+        return undefined;
       },
     });
+    if (!emitted)
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Gemini returned an empty response"
+      );
   }
 
   protected extractChatResponse(data: unknown): string {
@@ -153,36 +185,22 @@ export class GeminiProvider extends BaseProvider {
     const text = response.candidates?.[0]?.content?.parts
       ?.map((p) => p.text ?? "")
       .join("");
+    if (response.promptFeedback?.blockReason)
+      assertResponseComplete(
+        this.id,
+        text ?? "",
+        response.promptFeedback.blockReason,
+        []
+      );
+    assertResponseComplete(
+      this.id,
+      text ?? "",
+      response.candidates?.[0]?.finishReason,
+      ["STOP"]
+    );
     if (!text) {
       throw new Error("Gemini returned an empty response");
     }
     return text;
-  }
-
-  override async getModels() {
-    try {
-      const data = await httpRequest<{
-        models?: Array<{ name: string; displayName?: string }>;
-      }>({
-        url: `${this.buildUrl("/models")}?key=${encodeURIComponent(this.requireApiKey())}`,
-        method: "GET",
-        headers: this.requestHeaders(),
-        timeout: this.config.timeout,
-        provider: this.id,
-      });
-      const models = (data.models ?? [])
-        .filter((m) => m.name.includes("generateContent"))
-        .map((m) => ({
-          id: m.name.replace("models/", ""),
-          name: m.displayName ?? m.name.replace("models/", ""),
-          provider: this.id,
-        }));
-      if (models.length > 0) return models;
-    } catch (error) {
-      logger.warn("provider", "gemini: model listing failed, using defaults", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-    return super.getModels();
   }
 }

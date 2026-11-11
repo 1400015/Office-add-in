@@ -44,30 +44,30 @@ describe("runConnectionTest", () => {
   const t: I18nLabel = (key, options) =>
     options && "count" in options ? `${key}:${String(options.count)}` : key;
 
-  it("forces a refresh and reports the model count", async () => {
-    const listModels = vi.fn(async () => ["model-a", "model-b", "model-c"]);
-    const result = await runConnectionTest(listModels, config, t);
-    expect(listModels).toHaveBeenCalledWith(config, true);
+  it("runs a real probe and reports the model count", async () => {
+    const probe = vi.fn(async () => ({ modelCount: 3 }));
+    const result = await runConnectionTest(probe, config, t);
+    expect(probe).toHaveBeenCalledWith(config, undefined);
     expect(result).toEqual({
       ok: true,
       message: "settings.connectionOk:3",
     });
   });
 
-  it("reports the raw error message for Error throws", async () => {
+  it("maps provider failures without exposing raw messages", async () => {
     const listModels = vi.fn(async () => {
       throw new Error("boom");
     });
     const result = await runConnectionTest(listModels, config, (key) => key);
-    expect(result).toEqual({ ok: false, message: "boom" });
+    expect(result).toEqual({ ok: false, message: "errors.generic" });
   });
 
-  it("stringifies non-Error rejections", async () => {
+  it("maps non-Error rejections", async () => {
     const listModels = vi.fn(async () => {
       throw "plain";
     });
     const result = await runConnectionTest(listModels, config, (key) => key);
-    expect(result).toEqual({ ok: false, message: "plain" });
+    expect(result).toEqual({ ok: false, message: "errors.generic" });
   });
 });
 

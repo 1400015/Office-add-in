@@ -1,38 +1,38 @@
 import type { ProviderConfig } from "../../../types";
+import { friendlyError } from "../../../services/ErrorService";
 
-/** Minimal shape of react-i18next's translation function used here. */
 export type I18nLabel = (
   key: string,
   options?: Record<string, unknown>
 ) => string;
-
 export interface ConnectionTestResult {
   ok: boolean;
   message: string;
 }
 
-/**
- * Probe one provider with a forced model listing and translate the
- * outcome into the banner shown under its credentials accordion.
- */
 export async function runConnectionTest(
-  listModels: (
+  probe: (
     config: ProviderConfig,
-    forceRefresh?: boolean
-  ) => Promise<unknown[]>,
+    signal?: AbortSignal
+  ) => Promise<{ modelCount?: number }>,
   config: ProviderConfig,
-  t: I18nLabel
+  t: I18nLabel,
+  signal?: AbortSignal
 ): Promise<ConnectionTestResult> {
   try {
-    const models = await listModels(config, true);
+    const result = await probe(config, signal);
     return {
       ok: true,
-      message: t("settings.connectionOk", { count: models.length }),
+      message:
+        result.modelCount === undefined
+          ? t("settings.connectionSuccess")
+          : t("settings.connectionOk", { count: result.modelCount }),
     };
   } catch (error) {
+    const key = friendlyError(error, { provider: config.id });
     return {
       ok: false,
-      message: error instanceof Error ? error.message : String(error),
+      message: t(key.startsWith("errors.") ? key : `errors.${key}`),
     };
   }
 }

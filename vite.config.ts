@@ -60,6 +60,31 @@ export default defineConfig({
             ) {
               return "vendor-utils";
             }
+            if (
+              id.includes("react-markdown") ||
+              id.includes("remark-gfm") ||
+              id.includes("mdast-util") ||
+              id.includes("micromark") ||
+              id.includes("unified") ||
+              id.includes("hast-util") ||
+              id.includes("property-information") ||
+              id.includes("space-separated-tokens") ||
+              id.includes("comma-separated-tokens") ||
+              id.includes("decode-named-character-reference") ||
+              id.includes("character-entities") ||
+              id.includes("ccount") ||
+              id.includes("trim-lines") ||
+              id.includes("markdown-table") ||
+              id.includes("html-url-attributes") ||
+              id.includes("devlop") ||
+              id.includes("estree-util") ||
+              id.includes("vfile") ||
+              id.includes("bail") ||
+              id.includes("trough") ||
+              id.includes("is-plain-obj")
+            ) {
+              return "vendor-markdown";
+            }
           }
           return undefined;
         },

@@ -7,10 +7,19 @@ import type {
   ProviderId,
 } from "../types";
 import { ConfigurationError, ProviderError } from "../types";
-import { httpRequest, httpStream } from "../services/HttpService";
+import {
+  httpRequest,
+  httpStream,
+  parseStreamPayload,
+} from "../services/HttpService";
 import { logger } from "../services/LoggerService";
 import { getReasoningStrategy } from "../config/reasoningProfiles";
+import {
+  fetchProviderModels,
+  probeProviderConnection,
+} from "../services/ProviderCatalog";
 import { PROVIDER_DEFINITIONS } from "../config/providers";
+import { assertResponseComplete } from "../services/responseCompletion";
 
 export interface NormalizedMessage {
   role: "system" | "user" | "assistant";
@@ -36,10 +45,12 @@ export abstract class BaseProvider {
   }
 
   protected buildUrl(path: string): string {
-    const base =
-      this.config.useProxy && this.config.proxyUrl
-        ? this.config.proxyUrl.replace(/\/$/, "")
-        : this.config.endpoint.replace(/\/$/, "");
+    if (this.config.useProxy && !this.config.proxyUrl.trim()) {
+      throw new ConfigurationError("Proxy URL is required");
+    }
+    const base = this.config.useProxy
+      ? this.config.proxyUrl.replace(/\/$/, "")
+      : this.config.endpoint.replace(/\/$/, "");
     return `${base}${path}`;
   }
 
@@ -80,6 +91,17 @@ export abstract class BaseProvider {
 
   protected abstract extractChatResponse(data: unknown): string;
 
+  protected extractStreamText(content: unknown): string {
+    if (content === undefined || content === null) return "";
+    if (typeof content !== "string")
+      throw new ProviderError(
+        this.id,
+        "INVALID_RESPONSE",
+        "Provider returned invalid text content"
+      );
+    return content;
+  }
+
   protected requestHeaders(): Record<string, string> {
     const headers = { ...this.buildHeaders() };
     if (this.config.useProxy && this.config.proxyUrl.trim()) {
@@ -88,18 +110,21 @@ export abstract class BaseProvider {
     return headers;
   }
 
-  async getModels(): Promise<AIModel[]> {
-    return this.definition.defaultModels.map((id) => ({
-      id,
-      name: id,
-      provider: this.id,
-    }));
+  async getModels(signal?: AbortSignal): Promise<AIModel[]> {
+    return fetchProviderModels(this.config, signal);
+  }
+
+  async probeConnection(
+    signal?: AbortSignal
+  ): Promise<{ modelCount?: number }> {
+    return probeProviderConnection(this.config, signal);
   }
 
   async chat(
     messages: ChatMessage[],
     options: ChatOptions,
-    context?: ChatContext
+    context?: ChatContext,
+    signal?: AbortSignal
   ): Promise<string> {
     const normalized = this.normalizeMessages(messages, options);
     const withContext = context?.selectionText
@@ -119,6 +144,7 @@ export abstract class BaseProvider {
       body,
       timeout: this.config.timeout,
       provider: this.id,
+      signal,
     });
     return this.extractChatResponse(data);
   }
@@ -140,6 +166,7 @@ export abstract class BaseProvider {
       reasoning: options.reasoning,
     });
 
+    let emitted = false;
     await httpStream({
       url: this.buildUrl(this.chatPath()),
       headers: this.requestHeaders(),
@@ -147,10 +174,31 @@ export abstract class BaseProvider {
       timeout: this.config.timeout,
       provider: this.id,
       signal,
-      onToken: (raw) => {
-        onToken(raw);
+      format: "sse",
+      onPayload: (raw) => {
+        const data = parseStreamPayload<{
+          choices?: Array<{
+            delta?: { content?: unknown; refusal?: string };
+            finish_reason?: string | null;
+          }>;
+        }>(raw, this.id);
+        const choice = data.choices?.[0];
+        const token = this.extractStreamText(choice?.delta?.content);
+        if (token) {
+          emitted = true;
+          onToken(token);
+        }
+        assertResponseComplete(this.id, "", choice?.finish_reason, ["stop"]);
+        if (choice?.delta?.refusal)
+          assertResponseComplete(this.id, "", "refusal", ["stop"]);
       },
     });
+    if (!emitted)
+      throw new ProviderError(
+        this.id,
+        "EMPTY_RESPONSE",
+        "Provider returned an empty response"
+      );
   }
 
   protected chatPath(): string {

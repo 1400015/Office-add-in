@@ -2,11 +2,15 @@ import { logger } from "./LoggerService";
 
 const ENC_PREFIX = "enc:v1:";
 const ENC_V2 = "enc:v2:";
+const ENC_V3 = "enc:v3:";
 const SALT_KEY = "ouai.cryptoSalt";
 const PASSPHRASE_SALT = "ouai.passphraseSalt";
 const PASSPHRASE_CHECK = "ouai.passphraseCheck";
 const CHECK_PLAIN = "ouai-passphrase-ok";
 const MIN_PASSPHRASE = 8;
+// OWASP Password Storage Cheat Sheet: PBKDF2-HMAC-SHA256 >= 600 000 iterações.
+const ITERATIONS_V1_V2 = 100_000;
+const ITERATIONS_V3 = 600_000;
 
 function subtle(): SubtleCrypto {
   const s = globalThis.crypto?.subtle;
@@ -42,8 +46,18 @@ function storage(): OfficeRuntime.Storage {
 
 let keyPromise: Promise<CryptoKey> | null = null;
 let passphraseKey: CryptoKey | null = null;
+// Raw passphrase + salt kept only in memory so legacy v2 payloads can still
+// be decrypted after unlock; cleared on lock().
+let passphraseSecret = "";
+let passphraseSalt: Uint8Array = new Uint8Array(0);
+let protectionRevision = 0;
+let creatingPassphrase = false;
 
-async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(
+  secret: string,
+  salt: Uint8Array,
+  iterations: number = ITERATIONS_V1_V2
+): Promise<CryptoKey> {
   const material = await subtle().importKey(
     "raw",
     new TextEncoder().encode(secret).buffer as ArrayBuffer,
@@ -55,7 +69,7 @@ async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
     {
       name: "PBKDF2",
       salt: buf(salt),
-      iterations: 100000,
+      iterations,
       hash: "SHA-256",
     },
     material,
@@ -63,6 +77,16 @@ async function deriveKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
     false,
     ["encrypt", "decrypt"]
   );
+}
+
+// Passphrase keys derive with the current (v3) iteration count; legacy
+// v1/v2 payloads are decrypted with the key derived at 100k iterations.
+function derivePassphraseKey(
+  secret: string,
+  salt: Uint8Array,
+  iterations: number
+): Promise<CryptoKey> {
+  return deriveKey(secret, salt, iterations);
 }
 
 async function encryptWith(
@@ -117,63 +141,166 @@ async function getOrCreateKey(): Promise<CryptoKey> {
 
 export const CryptoService = {
   async encrypt(plaintext: string): Promise<string> {
-    if (passphraseKey) return encryptWith(passphraseKey, plaintext, ENC_V2);
-    return encryptWith(await getOrCreateKey(), plaintext, ENC_PREFIX);
+    const revision = protectionRevision;
+    const protectedVault = await this.assertWritable(revision);
+    const key = protectedVault ? passphraseKey : await getOrCreateKey();
+    if (!key) throw new Error("locked");
+    const result = await encryptWith(
+      key,
+      plaintext,
+      protectedVault ? ENC_V3 : ENC_PREFIX
+    );
+    await this.assertWritable(revision);
+    return result;
   },
 
   async decrypt(payload: string): Promise<string> {
-    if (payload.startsWith(ENC_V2)) {
+    const revision = protectionRevision;
+    // Passphrase-protected payloads: v3 uses the current 600k key, v2 is
+    // legacy (100k) and must be re-encrypted to v3 on the next save.
+    if (payload.startsWith(ENC_V3) || payload.startsWith(ENC_V2)) {
       if (!passphraseKey) throw new Error("locked");
-      return decryptWith(passphraseKey, payload, ENC_V2);
+      const prefix = payload.startsWith(ENC_V3) ? ENC_V3 : ENC_V2;
+      const key =
+        prefix === ENC_V3
+          ? passphraseKey
+          : await derivePassphraseKey(
+              passphraseSecret,
+              passphraseSalt,
+              ITERATIONS_V1_V2
+            );
+      if (!key) throw new Error("locked");
+      const plaintext = await decryptWith(key, payload, prefix);
+      if (revision !== protectionRevision) throw new Error("locked");
+      return plaintext;
     }
-    if (!payload.startsWith(ENC_PREFIX)) return payload;
-    return decryptWith(await getOrCreateKey(), payload, ENC_PREFIX);
+    if (!passphraseKey && (await this.hasPassphrase()))
+      throw new Error("locked");
+    const plaintext = payload.startsWith(ENC_PREFIX)
+      ? await decryptWith(await getOrCreateKey(), payload, ENC_PREFIX)
+      : payload;
+    if (revision !== protectionRevision) throw new Error("locked");
+    return plaintext;
   },
 
   isEncrypted(value: string): boolean {
-    return value.startsWith(ENC_PREFIX) || value.startsWith(ENC_V2);
+    return (
+      value.startsWith(ENC_PREFIX) ||
+      value.startsWith(ENC_V2) ||
+      value.startsWith(ENC_V3)
+    );
   },
 
   isUnlocked(): boolean {
     return passphraseKey !== null;
   },
 
+  getRevision(): number {
+    return protectionRevision;
+  },
+
+  async assertWritable(revision: number): Promise<boolean> {
+    if (revision !== protectionRevision || creatingPassphrase)
+      throw new Error("locked");
+    const hasPassphrase = await this.hasPassphrase();
+    if (
+      revision !== protectionRevision ||
+      creatingPassphrase ||
+      (hasPassphrase && !passphraseKey)
+    ) {
+      throw new Error("locked");
+    }
+    return hasPassphrase;
+  },
+
   async hasPassphrase(): Promise<boolean> {
     const check = await storage().getItem(PASSPHRASE_CHECK);
-    return typeof check === "string" && check.startsWith(ENC_V2);
+    if (check === null || check === undefined) return false;
+    if (
+      typeof check !== "string" ||
+      !(check.startsWith(ENC_V2) || check.startsWith(ENC_V3))
+    ) {
+      throw new Error("invalid passphrase protection state");
+    }
+    return true;
   },
 
   async createPassphrase(passphrase: string): Promise<void> {
     const secret = passphrase.trim();
     if (secret.length < MIN_PASSPHRASE) throw new Error("passphrase-short");
-    if (await this.hasPassphrase()) throw new Error("passphrase-exists");
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    await storage().setItem(PASSPHRASE_SALT, toBase64(salt));
-    passphraseKey = await deriveKey(secret, salt);
-    await storage().setItem(
-      PASSPHRASE_CHECK,
-      await encryptWith(passphraseKey, CHECK_PLAIN, ENC_V2)
-    );
+    if (creatingPassphrase) throw new Error("locked");
+    creatingPassphrase = true;
+    const revision = ++protectionRevision;
+    try {
+      if (await this.hasPassphrase()) throw new Error("passphrase-exists");
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const key = await deriveKey(secret, salt, ITERATIONS_V3);
+      const check = await encryptWith(key, CHECK_PLAIN, ENC_V3);
+      if (revision !== protectionRevision) throw new Error("locked");
+      await storage().setItem(PASSPHRASE_SALT, toBase64(salt));
+      if (revision !== protectionRevision) throw new Error("locked");
+      await storage().setItem(PASSPHRASE_CHECK, check);
+      if (revision !== protectionRevision) throw new Error("locked");
+      passphraseKey = key;
+      passphraseSecret = secret;
+      passphraseSalt = salt;
+    } finally {
+      creatingPassphrase = false;
+    }
   },
 
   async unlock(passphrase: string): Promise<boolean> {
+    const revision = ++protectionRevision;
     const saltText = await storage().getItem(PASSPHRASE_SALT);
     const check = await storage().getItem(PASSPHRASE_CHECK);
     if (typeof saltText !== "string" || typeof check !== "string") return false;
+    const salt = fromBase64(saltText);
+    const secret = passphrase.trim();
     try {
-      const key = await deriveKey(passphrase.trim(), fromBase64(saltText));
-      const plain = await decryptWith(key, check, ENC_V2);
-      if (plain !== CHECK_PLAIN) return false;
+      // The stored check may be v3 (600k) or legacy v2 (100k): try the
+      // current count first, then fall back to the legacy count.
+      const checkPrefix = check.startsWith(ENC_V3) ? ENC_V3 : ENC_V2;
+      const iterations =
+        checkPrefix === ENC_V3 ? ITERATIONS_V3 : ITERATIONS_V1_V2;
+      const key = await deriveKey(secret, salt, iterations);
+      const plain = await decryptWith(key, check, checkPrefix);
+      if (plain !== CHECK_PLAIN) {
+        // Retry with the other iteration count in case the prefix lies.
+        const alt =
+          iterations === ITERATIONS_V3 ? ITERATIONS_V1_V2 : ITERATIONS_V3;
+        const altKey = await deriveKey(secret, salt, alt);
+        const altPlain = await decryptWith(
+          altKey,
+          check,
+          check.startsWith(ENC_V3) ? ENC_V3 : ENC_V2
+        );
+        if (altPlain !== CHECK_PLAIN) return false;
+        if (revision !== protectionRevision) return false;
+        passphraseKey = altKey;
+        passphraseSecret = secret;
+        passphraseSalt = salt;
+        return true;
+      }
+      if (revision !== protectionRevision) return false;
       passphraseKey = key;
+      passphraseSecret = secret;
+      passphraseSalt = salt;
       return true;
     } catch {
-      passphraseKey = null;
+      if (revision === protectionRevision) {
+        passphraseKey = null;
+        passphraseSecret = "";
+        passphraseSalt = new Uint8Array(0);
+      }
       return false;
     }
   },
 
   lock(): void {
+    protectionRevision++;
     passphraseKey = null;
+    passphraseSecret = "";
+    passphraseSalt = new Uint8Array(0);
   },
 
   async isAvailable(): Promise<boolean> {

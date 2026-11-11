@@ -1,12 +1,21 @@
 import type { JSX } from "react";
 import { Suspense, lazy, useEffect } from "react";
-import { Tab, TabList, Button, Spinner } from "@fluentui/react-components";
+import {
+  Tab,
+  TabList,
+  Button,
+  Spinner,
+  MessageBar,
+  MessageBarBody,
+  MessageBarActions,
+} from "@fluentui/react-components";
 import {
   Chat20Regular,
   Settings20Regular,
   History20Regular,
   Library20Regular,
   Add20Regular,
+  Dismiss20Regular,
 } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { ChatView } from "./ChatView";
@@ -21,9 +30,9 @@ const TemplatesView = lazy(() =>
   import("./TemplatesView").then((m) => ({ default: m.TemplatesView }))
 );
 import { useAppStore } from "../store/useAppStore";
-import { useChat } from "../hooks/useChat";
 import { useOfficeInit } from "../hooks/useOfficeInit";
 import { useRibbonCommands } from "../hooks/useRibbonCommands";
+import { useModelCatalog } from "../hooks/useModelCatalog";
 import type { AppView } from "../types";
 
 export function Taskpane(): JSX.Element {
@@ -31,10 +40,12 @@ export function Taskpane(): JSX.Element {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const startNewChat = useAppStore((s) => s.startNewChat);
-  const { stopStreaming } = useChat();
   const language = useAppStore((s) => s.language);
+  const error = useAppStore((s) => s.error);
+  const setError = useAppStore((s) => s.setError);
 
-  useOfficeInit();
+  const initializationFailed = useOfficeInit();
+  useModelCatalog();
   useRibbonCommands();
 
   useEffect(() => {
@@ -44,11 +55,20 @@ export function Taskpane(): JSX.Element {
   }, [language, i18n]);
 
   const onNewChat = (): void => {
-    // Abort first: a streaming answer must not land in the new conversation.
-    stopStreaming();
     startNewChat();
     setView("chat");
   };
+
+  if (initializationFailed) {
+    return (
+      <div className="empty-state">
+        <div>{t("errors.settingsLoad")}</div>
+        <Button appearance="primary" onClick={() => window.location.reload()}>
+          {t("common.reload")}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -89,6 +109,29 @@ export function Taskpane(): JSX.Element {
           </Button>
         )}
       </div>
+
+      {error && (
+        <MessageBar intent="error">
+          <MessageBarBody>
+            {error === "noApiKey"
+              ? t("errors.noApiKey")
+              : error === "noModel"
+                ? t("errors.noModel")
+                : error.startsWith("errors.")
+                  ? t(error)
+                  : error}
+          </MessageBarBody>
+          <MessageBarActions>
+            <Button
+              appearance="transparent"
+              size="small"
+              icon={<Dismiss20Regular />}
+              aria-label={t("common.close")}
+              onClick={() => setError(null)}
+            />
+          </MessageBarActions>
+        </MessageBar>
+      )}
 
       <div className="app-body">
         {view === "chat" && <ChatView />}

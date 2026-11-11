@@ -8,6 +8,7 @@ import {
 } from "../constants";
 import { logger } from "./LoggerService";
 import { CryptoService } from "./CryptoService";
+import { StorageLockedError } from "./StorageService";
 
 export const LOCKED_HISTORY_TITLE = "locked";
 
@@ -34,25 +35,43 @@ function getDb(): Promise<IDBPDatabase> {
 }
 
 async function materialize(raw: StoredChat): Promise<ChatHistory> {
-  if (!raw.sealed) return raw;
-  if (!CryptoService.isUnlocked()) {
-    return {
-      id: raw.id,
-      timestamp: raw.timestamp,
-      provider: raw.provider ?? "mistral",
-      model: "",
-      title: LOCKED_HISTORY_TITLE,
-      messages: [],
-    };
+  const revision = CryptoService.getRevision();
+  const locked = (): ChatHistory => ({
+    id: raw.id,
+    timestamp: raw.timestamp,
+    provider: raw.provider ?? "mistral",
+    model: "",
+    title: LOCKED_HISTORY_TITLE,
+    messages: [],
+  });
+  if (
+    !CryptoService.isUnlocked() &&
+    (raw.sealed || (await CryptoService.hasPassphrase()))
+  ) {
+    return locked();
   }
+  if (revision !== CryptoService.getRevision()) return locked();
+  if (!raw.sealed) return raw;
   const json = await CryptoService.decrypt(raw.sealed);
+  if (revision !== CryptoService.getRevision()) return locked();
   return JSON.parse(json) as ChatHistory;
 }
 
 export const HistoryService = {
   async saveChat(chat: ChatHistory): Promise<void> {
+    const revision = CryptoService.getRevision();
+    const assertWritable = async (): Promise<boolean> => {
+      try {
+        return await CryptoService.assertWritable(revision);
+      } catch (error) {
+        if (error instanceof Error && error.message === "locked")
+          throw new StorageLockedError();
+        throw error;
+      }
+    };
+    const protectedVault = await assertWritable();
     const db = await getDb();
-    if (CryptoService.isUnlocked()) {
+    if (protectedVault) {
       const sealed = await CryptoService.encrypt(JSON.stringify(chat));
       const stored: StoredChat = {
         id: chat.id,
@@ -63,8 +82,10 @@ export const HistoryService = {
         messages: [],
         sealed,
       };
+      await assertWritable();
       await db.put(IDB_STORE_CHATS, stored);
     } else {
+      if (await assertWritable()) throw new StorageLockedError();
       await db.put(IDB_STORE_CHATS, chat);
     }
     await this.prune();

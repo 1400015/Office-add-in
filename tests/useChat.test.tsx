@@ -28,15 +28,37 @@ import { createProvider } from "../src/providers/ProviderFactory";
 
 function createConfigs(): Record<ProviderId, ProviderConfig> {
   const configs = {} as Record<ProviderId, ProviderConfig>;
-  for (const id of PROVIDER_ORDER) configs[id] = createDefaultProviderConfig(id);
+  for (const id of PROVIDER_ORDER)
+    configs[id] = createDefaultProviderConfig(id);
   configs.mistral = { ...configs.mistral, apiKey: "test-key", timeout: 30000 };
   return configs;
 }
 
 const mockStore = {
+  officeReady: true,
+  hydrated: true,
+  vaultBusy: false,
+  secretsLocked: false,
   providerConfigs: createConfigs(),
   activeProvider: "mistral" as const,
   activeModel: "mistral-large-latest",
+  modelCatalog: {
+    status: "ready" as const,
+    generation: 1,
+    requestId: 1,
+    provider: "mistral" as const,
+    configRevision: 0,
+    reason: "initial" as const,
+    models: [
+      {
+        id: "mistral-large-latest",
+        name: "mistral-large-latest",
+        provider: "mistral" as const,
+        chatCompatibility: "supported" as const,
+      },
+    ],
+    source: "remote" as const,
+  },
   temperature: 0.7,
   maxTokens: 1024,
   reasoning: "off" as const,
