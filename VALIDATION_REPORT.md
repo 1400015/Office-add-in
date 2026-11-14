@@ -1,6 +1,6 @@
 # Registo de validação
 
-**Estado mais recente (14 de novembro de 2026, snapshot `1006069`):** as verificações estáticas e os testes foram reexecutados neste snapshot — `typecheck`, `lint`, `format:check`, **291/291 testes em 31 ficheiros**, `build` e a validação do manifesto (aceite pelo serviço Microsoft) passam todas. As correções C1–C6 e R1–R7 continuam integradas. **Pendente:** os ensaios reais em Microsoft Office Desktop/Web e com fornecedores reais. O plano executável desses ensaios está em **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)**.
+**Estado mais recente (14 de novembro de 2026, snapshot `1006069`):** as verificações estáticas e os testes foram reexecutados neste snapshot — `typecheck`, `lint`, `format:check`, **291/291 testes em 31 ficheiros**, `build`, validação do manifesto (aceite pelo serviço Microsoft), `npm audit` (0 vulnerabilidades) e o bundle dry-run do Worker passam todos; o CI do GitHub Actions está verde (run `43048875060`, success, no commit `1006069`). As correções C1–C6 e R1–R7 continuam integradas. **Pendente:** os ensaios reais em Microsoft Office Desktop/Web e com fornecedores reais. O plano executável desses ensaios está em **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)**.
 
 ---
 
@@ -13,10 +13,10 @@
 | `npm run format:check` | ✅ Aprovado | Prettier, todos os ficheiros |
 | `npm test` | ✅ **291/291 testes, 31/31 ficheiros** | Reexecutado neste snapshot (14 nov 2026) |
 | `npm run build` | ✅ Aprovado | Vite build, code-split (chunks react, Fluent UI, markdown e views) |
-| `npm run validate` | ✅ Aprovado | Serviço Microsoft: "Manifest accepted" |
-| `npm audit --omit=dev` | N/D | Não reexecutado: o registo npm local não expõe o endpoint de auditoria |
-| CI GitHub Actions | N/D | Pipeline definida em [`.github/workflows/ci.yml`](.github/workflows/ci.yml); último registo verde conhecido: run `41438292954` (não reconfirmado neste snapshot) |
-| Wrangler dry-run | N/D | `npx wrangler@4 deploy --dry-run`; requer rede/CLI (não executado neste snapshot) |
+| `npm run validate` | ✅ Aprovado | Serviço Microsoft: "Manifest accepted" (14 nov 2026) |
+| `npm audit --omit=dev` | ✅ Aprovado | 0 vulnerabilidades (registo oficial via proxy) |
+| CI GitHub Actions (run `43048875060`) | ✅ **success** | `main`, commit `1006069`: typecheck → lint → format → test → build → check:manifest-paths → validate → manifest info → wrangler dry-run |
+| Wrangler dry-run | ✅ Aprovado | `npx wrangler@4 deploy --dry-run --outdir dist-proxy`; upload 4,32 KiB / gzip 1,59 KiB, sem deploy real |
 
 > Nota: este snapshot do repositório é um único commit (`1006069`) — a história de commits referida nas secções seguintes (`0d6280a`, `5b16013`, …) pertence ao registo anterior e mantém-se apenas como contexto.
 
