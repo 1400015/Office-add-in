@@ -17,7 +17,7 @@ Cada linha deve ser preenchida durante a execução: marcar ✅ (passou), ❌ (f
 | 0.4 | Node.js >= 20.19 instalado no ambiente de teste | ☐ | `node --version`: _______ |
 | 0.5 | Projeto clonado e `npm ci` executado sem erros | ☐ | Commit testado: _______ |
 | 0.6 | `npm start` corre e `https://localhost:3000` abre no browser | ☐ | Certificado HTTPS aceite no OS |
-| 0.7 | `npm test` passa 277/277 localmente | ☐ | |
+| 0.7 | `npm test` passa 291/291 localmente | ☐ | |
 | 0.8 | `npm run validate` → "Manifest accepted" | ☐ | |
 | 0.9 | API key de teste **Mistral** (mínimo obrigatório) | ☐ | Quota disponível: _______ |
 | 0.10 | API key de teste **OpenAI** ou **Claude** + proxy Worker deployed com `ALLOWED_ORIGINS` | ☐ | URL do proxy: _______ |

@@ -44,7 +44,7 @@ OfficeUniversalAI/
 
 - **[INSTALL.md](INSTALL.md)** — detailed installation guide (Windows, Mac, Web, production hosting, organization deployment)
 - **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)** — executable checklist for real Office testing (9 host/platform combos, all quick actions, providers, security)
-- **[VALIDATION_REPORT.md](VALIDATION_REPORT.md)** — current validation status: 277/277 tests + green CI; pending real Office trials
+- **[VALIDATION_REPORT.md](VALIDATION_REPORT.md)** — current validation status: 291/291 tests + green CI; pending real Office trials
 - **[README.md](README.md)** — this file (architecture, configuration, development)
 - **[docs/](docs/)** — historical implementation plans (`IMPLEMENTATION_PLAN.md`, `IMPLEMENTATION_PLAN_SOL.md`) kept for reference
 
