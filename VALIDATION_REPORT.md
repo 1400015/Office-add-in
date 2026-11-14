@@ -1,24 +1,26 @@
 # Registo de validação
 
-**Estado mais recente (2 de novembro de 2026, commit `0d6280a`):** todos os testes automatizados passam — **277/277 em 29 ficheiros** — e o CI do GitHub Actions está verde (run `41438292954`, success). As correções C1–C6 e R1–R7 estão integradas e validadas estaticamente. **Pendente:** os ensaios reais em Microsoft Office Desktop/Web e com fornecedores reais. O plano executável desses ensaios está em **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)**.
+**Estado mais recente (14 de novembro de 2026, snapshot `1006069`):** as verificações estáticas e os testes foram reexecutados neste snapshot — `typecheck`, `lint`, `format:check`, **291/291 testes em 31 ficheiros**, `build` e a validação do manifesto (aceite pelo serviço Microsoft) passam todas. As correções C1–C6 e R1–R7 continuam integradas. **Pendente:** os ensaios reais em Microsoft Office Desktop/Web e com fornecedores reais. O plano executável desses ensaios está em **[TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)**.
 
 ---
 
-## Estado atual consolidado (commit `0d6280a`, branch `main`)
+## Estado atual consolidado (snapshot `1006069`, branch `main`)
 
 | Verificação | Resultado | Contexto |
 | --- | --- | --- |
 | `npm run typecheck` | ✅ Aprovado | `tsc --noEmit`, 0 erros |
 | `npm run lint` | ✅ Aprovado | ESLint, 0 erros, 0 warnings |
 | `npm run format:check` | ✅ Aprovado | Prettier, todos os ficheiros |
-| `npm test` | ✅ **277/277 testes, 29/29 ficheiros** | Após correção dos 21 mocks desatualizados (commit `0d6280a`) |
-| `npm run build` | ✅ Aprovado | Vite build ~5s, code-split (main ~303 kB / 92 kB gzip) |
+| `npm test` | ✅ **291/291 testes, 31/31 ficheiros** | Reexecutado neste snapshot (14 nov 2026) |
+| `npm run build` | ✅ Aprovado | Vite build, code-split (chunks react, Fluent UI, markdown e views) |
 | `npm run validate` | ✅ Aprovado | Serviço Microsoft: "Manifest accepted" |
-| `npm audit --omit=dev` | ✅ Aprovado | 0 vulnerabilidades |
-| CI GitHub Actions (run `41438292954`) | ✅ **success** | typecheck → lint → format → test → build → validate → manifest info → wrangler dry-run |
-| Wrangler dry-run | ✅ Aprovado | `npx wrangler@4 deploy --dry-run`, sem deploy real |
+| `npm audit --omit=dev` | N/D | Não reexecutado: o registo npm local não expõe o endpoint de auditoria |
+| CI GitHub Actions | N/D | Pipeline definida em [`.github/workflows/ci.yml`](.github/workflows/ci.yml); último registo verde conhecido: run `41438292954` (não reconfirmado neste snapshot) |
+| Wrangler dry-run | N/D | `npx wrangler@4 deploy --dry-run`; requer rede/CLI (não executado neste snapshot) |
 
-### Correção dos testes (commit `0d6280a`)
+> Nota: este snapshot do repositório é um único commit (`1006069`) — a história de commits referida nas secções seguintes (`0d6280a`, `5b16013`, …) pertence ao registo anterior e mantém-se apenas como contexto.
+
+### Correção dos testes (histórico, commit `0d6280a`)
 
 Os 21 testes que falhavam no PR #5 foram corrigidos atualizando apenas os mocks/fixtures para os contratos revistos do código de produção (nenhuma alteração em `src/`):
 
